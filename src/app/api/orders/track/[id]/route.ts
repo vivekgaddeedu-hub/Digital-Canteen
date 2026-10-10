@@ -38,6 +38,8 @@ export async function GET(
             location: true,
             paymentQrEnabled: true,
             paymentUpiId: true,
+            paymentPayeeName: true,
+            paymentQrImageUrl: true,
             paymentInstructions: true,
             paymentPolicy: true,
           },

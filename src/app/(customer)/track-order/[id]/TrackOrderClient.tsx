@@ -56,6 +56,8 @@ interface TrackingData {
     location: string;
     paymentQrEnabled: boolean;
     paymentUpiId: string | null;
+    paymentPayeeName?: string | null;
+    paymentQrImageUrl?: string | null;
     paymentInstructions: string | null;
     paymentPolicy: string;
   };
@@ -519,6 +521,8 @@ export default function TrackOrderClient({ orderId }: { orderId: string }) {
             paymentStatus={order.payment?.status || 'UNPAID'}
             canteenName={order.canteen.name}
             upiId={order.canteen.paymentUpiId}
+            payeeName={order.canteen.paymentPayeeName}
+            qrImageUrl={order.canteen.paymentQrImageUrl}
             paymentInstructions={order.canteen.paymentInstructions}
             paymentPolicy={order.canteen.paymentPolicy}
           />

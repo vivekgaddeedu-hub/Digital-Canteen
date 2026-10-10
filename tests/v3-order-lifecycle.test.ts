@@ -181,4 +181,20 @@ describe('QUICKBITE V3: Staff Payment Collection Workflow', () => {
     expect(upiPayload).not.toContain('password');
     expect(upiPayload).not.toContain('secret');
   });
+
+  it('generates valid configured UPI payload for Santosh Reddy (avi258369@oksbi)', () => {
+    const upiId = 'avi258369@oksbi';
+    const payeeName = 'Santosh Reddy';
+    const amount = 245.5;
+    const orderNumber = 'QB-20261010-9988';
+
+    const upiPayload = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
+      payeeName
+    )}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('QuickBite Order ' + orderNumber)}`;
+
+    expect(upiPayload).toContain('pa=avi258369%40oksbi');
+    expect(upiPayload).toContain('pn=Santosh%20Reddy');
+    expect(upiPayload).toContain('am=245.50');
+    expect(upiPayload).toContain('tn=QuickBite%20Order%20QB-20261010-9988');
+  });
 });

@@ -295,11 +295,11 @@ export default function CheckoutPage() {
                   <div className="flex items-center gap-2">
                     <QrCode className="w-4 h-4 text-indigo-600" />
                     <span className="text-xs font-bold text-stone-900">
-                      Instant UPI / QR (Simulated Sandbox)
+                      UPI QR Payment (GPay, PhonePe, Paytm & BHIM)
                     </span>
                   </div>
                   <p className="text-[11px] text-stone-500 mt-0.5 leading-relaxed">
-                    Simulates instant GPay, PhonePe, or BHIM approval.
+                    Scan UPI QR to Santosh Reddy (avi258369@oksbi) on order tracking page or at counter pickup.
                   </p>
                 </div>
               </label>

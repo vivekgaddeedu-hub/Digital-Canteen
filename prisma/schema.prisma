@@ -42,8 +42,10 @@ model Canteen {
   isActive         Boolean           @default(true)
   imageUrl             String?
   paymentQrEnabled     Boolean           @default(true)
-  paymentUpiId         String?           @default("quickbite.campus@upi")
-  paymentInstructions  String?           @default("Scan with any UPI app (GPay / PhonePe / Paytm) or pay cash at the pickup counter.")
+  paymentUpiId         String?           @default("avi258369@oksbi")
+  paymentPayeeName     String?           @default("Santosh Reddy")
+  paymentQrImageUrl    String?           @default("/images/upi-payment-qr.jpg")
+  paymentInstructions  String?           @default("Scan with any UPI app (Google Pay / PhonePe / Paytm / BHIM) to Santosh Reddy (avi258369@oksbi) or pay cash at the pickup counter.")
   paymentPolicy        String            @default("PAY_BEFORE_PICKUP")
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
