@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { UtensilsCrossed, Lock, Mail, ArrowRight, UserCheck, ChefHat, ShieldCheck } from 'lucide-react';
-import { Role } from '@/types/database';
+import { Role } from '@prisma/client';
 
 function LoginForm() {
   const router = useRouter();
@@ -32,13 +32,13 @@ function LoginForm() {
       toast(`Welcome back, ${res.user.name}!`, 'success');
       
       const destination = res.redirectUrl || (
-        res.user.role === Role.ADMIN
+        res.user.role === 'ADMIN'
           ? '/admin/dashboard'
-          : res.user.role === Role.STAFF
+          : res.user.role === 'STAFF'
           ? '/staff/dashboard'
           : '/customer/dashboard'
       );
-      router.push(destination);
+      window.location.href = destination;
     } else {
       setErrorMsg(res.error || 'Invalid credentials');
     }
@@ -57,13 +57,13 @@ function LoginForm() {
       toast(`Welcome back, ${res.user.name}!`, 'success');
       
       const destination = res.redirectUrl || (
-        res.user.role === Role.ADMIN
+        res.user.role === 'ADMIN'
           ? '/admin/dashboard'
-          : res.user.role === Role.STAFF
+          : res.user.role === 'STAFF'
           ? '/staff/dashboard'
           : '/customer/dashboard'
       );
-      router.push(destination);
+      window.location.href = destination;
     } else {
       setErrorMsg(res.error || 'Invalid credentials');
     }

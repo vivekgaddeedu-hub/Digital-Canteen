@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import prisma from './prisma';
-import { Role } from '@/types/database';
+import { Role } from '@prisma/client';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'quickbite_super_secure_jwt_token_secret_campus_digital_canteen_2026';
 export const TOKEN_COOKIE_NAME = 'qb_auth_token';
@@ -97,11 +97,13 @@ export async function getSessionUser(req?: NextRequest): Promise<TokenPayload | 
 export async function requireAuth(req: NextRequest, allowedRoles?: Role[]): Promise<{ user: TokenPayload } | { error: NextResponse }> {
   const user = await getSessionUser(req);
   if (!user) {
+    const errorRes = NextResponse.json(
+      { error: 'Authentication required. Please log in.' },
+      { status: 401 }
+    );
+    clearAuthCookie(errorRes);
     return {
-      error: NextResponse.json(
-        { error: 'Authentication required. Please log in.' },
-        { status: 401 }
-      ),
+      error: errorRes,
     };
   }
 

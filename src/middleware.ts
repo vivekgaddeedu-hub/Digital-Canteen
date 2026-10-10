@@ -31,14 +31,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/staff/dashboard', request.url));
   }
 
-  // 2. Redirect logged-in users away from auth pages (/login, /register)
+  // 2. Auth pages (/login, /register) are always accessible (allows account switching and test sign-in)
   if (pathname === '/login' || pathname === '/register') {
-    if (user) {
-      let target = '/customer/dashboard';
-      if (user.role === 'ADMIN') target = '/admin/dashboard';
-      else if (user.role === 'STAFF') target = '/staff/dashboard';
-      return NextResponse.redirect(new URL(target, request.url));
-    }
     return NextResponse.next();
   }
 

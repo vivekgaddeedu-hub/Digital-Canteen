@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "tunnel": "./.bin/cloudflared tunnel --url http://localhost:3000"
   },
   "dependencies": {
     "@neon/config": "^1.8.6",
