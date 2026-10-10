@@ -19,7 +19,7 @@ export function getEmailConfig(): EmailConfig {
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
   const user = process.env.SMTP_USER || '';
   const pass = process.env.SMTP_PASS || '';
-  const fromEmail = process.env.SMTP_FROM_EMAIL || 'orders@quickbite.campus.edu';
+  const fromEmail = process.env.SMTP_FROM_EMAIL || user || 'orders@quickbite.campus.edu';
   const fromName = process.env.SMTP_FROM_NAME || 'QUICKBITE';
   const appBaseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
 
@@ -72,7 +72,7 @@ export function getEmailTransporter(): Transporter {
       service: 'gmail',
       auth: {
         user: config.auth.user,
-        pass: config.auth.pass, // Expects Gmail App Password
+        pass: config.auth.pass.replace(/\s+/g, ''), // Expects Gmail App Password, strip any spaces
       },
     });
     return transporterInstance;
