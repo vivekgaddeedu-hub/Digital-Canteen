@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       user: {
         ...user,
-        assignedCanteen: user.staffAssignments[0]?.canteen || null,
+        assignedCanteen: user.staffAssignments?.[0]?.canteen || null,
       },
     });
   } catch (error) {

@@ -348,11 +348,17 @@ async function attachRelations(tableName: string, rows: any[], include?: Record<
 
   if (tableName === 'User') {
     const userIds = rows.map((u) => u.id);
+    rows.forEach((u) => {
+      if (!u.staffAssignments) u.staffAssignments = [];
+    });
     if (include.staffAssignments) {
       const assignments = await sql('SELECT * FROM "StaffAssignment" WHERE "userId" = ANY($1)', [userIds]);
       const parsedAssignments = assignments.map((a) => parseRow(a, 'StaffAssignment'));
 
-      if (typeof include.staffAssignments === 'object' && include.staffAssignments.include?.canteen) {
+      if (
+        typeof include.staffAssignments === 'object' &&
+        (include.staffAssignments.include?.canteen || include.staffAssignments.select?.canteen)
+      ) {
         const cIds = Array.from(new Set(parsedAssignments.map((a) => a.canteenId).filter(Boolean)));
         if (cIds.length > 0) {
           const canteens = await sql('SELECT * FROM "Canteen" WHERE "id" = ANY($1)', [cIds]);
@@ -399,7 +405,8 @@ function createModelHandler<T = any>(tableName: string) {
       const res = await sql(query, params);
       if (res.length === 0) return null;
       const parsed = [parseRow(res[0], tableName)];
-      const withRelations = await attachRelations(tableName, parsed, args.include);
+      const rels = args.include || (args.select && typeof args.select === 'object' ? args.select : undefined);
+      const withRelations = await attachRelations(tableName, parsed, rels);
       return withRelations[0] as T;
     },
 
@@ -412,7 +419,8 @@ function createModelHandler<T = any>(tableName: string) {
       const res = await sql(query, params);
       if (res.length === 0) return null;
       const parsed = [parseRow(res[0], tableName)];
-      const withRelations = await attachRelations(tableName, parsed, args?.include);
+      const rels = args?.include || (args?.select && typeof args?.select === 'object' ? args?.select : undefined);
+      const withRelations = await attachRelations(tableName, parsed, rels);
       return withRelations[0] as T;
     },
 
@@ -434,7 +442,8 @@ function createModelHandler<T = any>(tableName: string) {
       const query = `SELECT * FROM "${tableName}" ${whereClause} ${orderClause} ${limitClause} ${offsetClause}`;
       const res = await sql(query, params);
       const parsed = res.map((r) => parseRow(r, tableName));
-      return (await attachRelations(tableName, parsed, args?.include)) as T[];
+      const rels = args?.include || (args?.select && typeof args?.select === 'object' ? args?.select : undefined);
+      return (await attachRelations(tableName, parsed, rels)) as T[];
     },
 
     async create(args: { data: Record<string, any>; include?: any }): Promise<T> {
