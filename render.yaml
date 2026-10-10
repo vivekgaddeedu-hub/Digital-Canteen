@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: quickbite-digital-canteen
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SMTP_HOST
+        value: "smtp.gmail.com"
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_FROM_NAME
+        value: "QUICKBITE"
+      - key: DEFAULT_UPI_ID
+        value: "avi258369@oksbi"
+      - key: DEFAULT_PAYEE_NAME
+        value: "Santosh Reddy"
+      - key: DEFAULT_PAYMENT_POLICY
+        value: "PAY_BEFORE_PICKUP"
+      - key: DATABASE_URL
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
