@@ -116,58 +116,47 @@ export default async function LandingPage() {
             </div>
           </div>
 
-          {/* Hero Visual Card */}
+          {/* Hero Visual Card - Campus Dining Experience (Zero anonymous order or fake metrics) */}
           <div className="lg:col-span-5 relative">
             <div className="relative mx-auto max-w-md bg-white rounded-3xl p-6 shadow-xl border border-stone-200/90 space-y-5">
               <div className="flex items-center justify-between pb-4 border-b border-stone-100">
                 <div>
                   <span className="text-[10px] uppercase font-bold tracking-wider text-brand-600">
-                    Live Status Tracker
+                    Campus Dining Platform
                   </span>
-                  <h3 className="text-base font-extrabold text-stone-900">Order #QB-2026-9942</h3>
+                  <h3 className="text-base font-extrabold text-stone-900">Fresh & Fast Everyday</h3>
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                  Ready at Counter
+                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-brand-600" />
+                  Pre-Order System
                 </span>
               </div>
 
-              <div className="relative h-48 w-full rounded-2xl overflow-hidden bg-stone-100 shadow-inner">
+              <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-stone-100 shadow-inner">
                 <Image
                   src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80"
-                  alt="Delicious Bowl"
+                  alt="Fresh Campus Meals"
                   fill
                   className="object-cover"
+                  priority
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-sm text-stone-900">Crispy Paneer Tikka Bowl</p>
-                  <p className="text-xs text-stone-500">Pickup Slot: 12:15 PM – 12:30 PM</p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-stone-800">Express Counter Pickup</span>
+                  <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded">Active Today</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs text-stone-400 block font-mono">Pickup Code</span>
-                  <span className="text-base font-black text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-200 font-mono">
-                    PK-9942A
-                  </span>
-                </div>
+                <p className="text-xs text-stone-500 leading-relaxed">
+                  Browse live canteen menus, reserve your preferred arrival slot, and collect freshly prepared meals at the counter with your secure pickup code.
+                </p>
               </div>
 
-              <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 text-xs text-stone-600 flex items-center justify-between">
-                <span>Central Food Court • Counter 1</span>
-                <span className="font-semibold text-stone-900">₹180.00 Paid</span>
-              </div>
-            </div>
-
-            {/* Floating accent badge */}
-            <div className="absolute -bottom-5 -left-4 bg-stone-900 text-white p-3.5 rounded-2xl shadow-xl flex items-center gap-3 hidden sm:flex">
-              <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center font-bold">
-                <Clock className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-xs text-stone-400 font-medium">Average Pickup Time</p>
-                <p className="text-sm font-bold text-white">Under 45 Seconds</p>
+              <div className="bg-stone-50 p-3.5 rounded-xl border border-stone-200 text-xs text-stone-600 flex items-center justify-between">
+                <span className="font-medium text-stone-700">Central Food Court & Canteens</span>
+                <Link href="/canteens" className="font-bold text-brand-600 hover:text-brand-700">
+                  Browse Menus →
+                </Link>
               </div>
             </div>
           </div>

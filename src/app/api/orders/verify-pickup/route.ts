@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
         items: true,
         customer: { select: { name: true, phone: true } },
         payment: true,
+        canteen: { select: { id: true, name: true, paymentPolicy: true } },
       },
     });
 
@@ -74,19 +75,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Enforce canteen payment policy before handover
+    const isPaid = order.payment && (order.payment.status === PaymentStatus.PAID || order.payment.status === PaymentStatus.COMPLETED);
+    const requiresPaymentFirst = (order.canteen?.paymentPolicy ?? 'PAY_BEFORE_PICKUP') === 'PAY_BEFORE_PICKUP';
+
+    if (requiresPaymentFirst && !isPaid) {
+      return NextResponse.json(
+        {
+          error: 'Payment must be collected and verified before completing pickup, according to the configured canteen policy.',
+          requiresPayment: true,
+          orderNumber: order.orderNumber,
+          amountDue: Number(order.total),
+          paymentStatus: order.payment?.status || PaymentStatus.UNPAID,
+        },
+        { status: 400 }
+      );
+    }
+
     // Mark as collected atomically
     const completed = await prisma.$transaction(async (tx) => {
-      // Complete payment if cash on pickup
-      if (order.payment && order.payment.status === PaymentStatus.PENDING) {
+      // If payment was pending/unpaid and policy allows cash on pickup without prior check
+      if (order.payment && (order.payment.status === PaymentStatus.PENDING || order.payment.status === PaymentStatus.UNPAID)) {
         await tx.payment.update({
           where: { orderId: order.id },
-          data: { status: PaymentStatus.COMPLETED },
+          data: {
+            status: PaymentStatus.PAID,
+            verifiedAt: new Date(),
+            verifiedByStaffId: auth.user.userId,
+            notes: `Auto-verified on pickup completion by staff ${auth.user.userId}`,
+          },
         });
       }
 
       const updated = await tx.order.update({
         where: { id: order.id },
-        data: { status: OrderStatus.COLLECTED },
+        data: {
+          status: OrderStatus.COLLECTED,
+          pickupVerifiedAt: new Date(),
+          pickupVerifiedByStaffId: auth.user.userId,
+        },
       });
 
       await tx.orderStatusHistory.create({
@@ -94,7 +121,7 @@ export async function POST(req: NextRequest) {
           orderId: order.id,
           fromStatus: OrderStatus.READY,
           toStatus: OrderStatus.COLLECTED,
-          note: `Verified pickup code ${cleanToken} at counter. Handed to customer.`,
+          note: `Verified pickup code ${cleanToken} at counter by staff ${auth.user.name || auth.user.userId}. Handed to customer.`,
           changedByUserId: auth.user.userId,
         },
       });
@@ -105,7 +132,12 @@ export async function POST(req: NextRequest) {
           action: 'ORDER_PICKUP_VERIFIED',
           entityType: 'Order',
           entityId: order.id,
-          details: JSON.stringify({ token: cleanToken, customerName: order.customer.name }),
+          details: JSON.stringify({
+            token: cleanToken,
+            customerName: order.customer.name,
+            pickupVerifiedAt: new Date().toISOString(),
+            paymentStatus: isPaid ? 'ALREADY_PAID' : 'CONFIRMED_ON_PICKUP',
+          }),
         },
       });
 

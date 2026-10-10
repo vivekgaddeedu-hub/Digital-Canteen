@@ -3,7 +3,12 @@ import prisma from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { orderStatusUpdateSchema } from '@/lib/validations';
 import { isValidStatusTransition } from '@/lib/order-utils';
-import { sendOrderReadyEmail, sendOrderStatusEmail } from '@/lib/email/email-service';
+import {
+  sendOrderAcceptedEmail,
+  sendOrderReadyEmail,
+  sendOrderCancelledEmail,
+  sendOrderStatusEmail,
+} from '@/lib/email/email-service';
 import { OrderStatus, PaymentStatus, Role } from '@prisma/client';
 
 export async function PUT(
@@ -29,7 +34,13 @@ export async function PUT(
 
     const order = await prisma.order.findUnique({
       where: { id },
-      include: { items: true, payment: true, customer: true, canteen: true },
+      include: {
+        items: true,
+        payment: true,
+        customer: true,
+        canteen: true,
+        pickupSlot: true,
+      },
     });
 
     if (!order) {
@@ -125,36 +136,49 @@ export async function PUT(
       return updatedOrder;
     });
 
+    // Prepare shared email data payload
+    const emailPayload = {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      customerName: order.customer.name,
+      canteenName: order.canteen.name,
+      canteenLocation: order.canteen.location,
+      pickupSlot: order.pickupSlot ? `${order.pickupSlot.startTime} - ${order.pickupSlot.endTime}` : 'As Scheduled',
+      pickupToken: order.pickupToken,
+      items: order.items.map((i) => ({
+        name: i.nameSnapshot,
+        quantity: i.quantity,
+        price: Number(i.unitPriceSnapshot),
+        subtotal: Number(i.subtotal),
+      })),
+      subtotal: Number(order.subtotal),
+      tax: Number(order.tax),
+      convenienceFee: Number(order.convenienceFee),
+      total: Number(order.total),
+      status: toStatus,
+      paymentStatus: order.payment?.status || 'UNPAID',
+      cancellationReason: reason || note,
+    };
+
     // Send email notifications to customer asynchronously
-    if (toStatus === OrderStatus.READY) {
-      sendOrderReadyEmail(order.customer.email, {
-        orderNumber: order.orderNumber,
-        customerName: order.customer.name,
-        canteenName: order.canteen.name,
-        canteenLocation: order.canteen.location,
-        pickupToken: order.pickupToken,
-      }).catch((err) => console.warn('Order ready email error (non-fatal):', err));
-    } else if (
-      toStatus === OrderStatus.ACCEPTED ||
-      toStatus === OrderStatus.PREPARING ||
-      toStatus === OrderStatus.REJECTED ||
-      toStatus === OrderStatus.CANCELLED
-    ) {
+    if (toStatus === OrderStatus.ACCEPTED) {
+      sendOrderAcceptedEmail(order.customer.email, emailPayload).catch((err) =>
+        console.warn('Order accepted email error (non-fatal):', err)
+      );
+    } else if (toStatus === OrderStatus.READY) {
+      sendOrderReadyEmail(order.customer.email, emailPayload).catch((err) =>
+        console.warn('Order ready email error (non-fatal):', err)
+      );
+    } else if (toStatus === OrderStatus.CANCELLED || toStatus === OrderStatus.REJECTED) {
+      sendOrderCancelledEmail(order.customer.email, emailPayload).catch((err) =>
+        console.warn('Order cancelled email error (non-fatal):', err)
+      );
+    } else if (toStatus === OrderStatus.PREPARING) {
       sendOrderStatusEmail(order.customer.email, {
-        orderNumber: order.orderNumber,
-        customerName: order.customer.name,
-        canteenName: order.canteen.name,
-        status: toStatus,
-        statusMessage:
-          toStatus === OrderStatus.ACCEPTED
-            ? 'The kitchen has accepted your order and queued it for preparation.'
-            : toStatus === OrderStatus.PREPARING
-            ? 'The chefs are now actively preparing your meal.'
-            : toStatus === OrderStatus.REJECTED
-            ? 'Your order could not be fulfilled by the kitchen.'
-            : `Order status is now ${toStatus}.`,
-        reason: reason || note,
-      }).catch((err) => console.warn('Order status email error (non-fatal):', err));
+        ...emailPayload,
+        statusMessage: 'The chefs are now actively preparing your meal in the kitchen.',
+        reason: note,
+      }).catch((err) => console.warn('Order preparing email error (non-fatal):', err));
     }
 
     return NextResponse.json({

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import StatusBadge from '@/components/StatusBadge';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useToast } from '@/context/ToastContext';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus } from '@prisma/client';
 import {
   ChefHat,
   Clock,
@@ -20,6 +20,10 @@ import {
   XCircle,
   Search,
   Utensils,
+  CreditCard,
+  ShieldAlert,
+  DollarSign,
+  Check,
 } from 'lucide-react';
 
 interface OrderItem {
@@ -54,6 +58,19 @@ interface StaffOrder {
     date: string;
   };
   items: OrderItem[];
+  payment?: {
+    id: string;
+    status: PaymentStatus;
+    method: string;
+    amount: number;
+    verifiedAt?: string | null;
+    verifiedByStaffId?: string | null;
+    notes?: string | null;
+  } | null;
+  canteen?: {
+    paymentPolicy?: string;
+  } | null;
+  acknowledgedAt?: string | null;
 }
 
 interface StaffDashboardProps {
@@ -84,8 +101,18 @@ export default function StaffDashboardClient({ canteen, initialOrders }: StaffDa
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  // Payment confirmation dialog state (Phase 7)
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedPaymentOrder, setSelectedPaymentOrder] = useState<StaffOrder | null>(null);
+  const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
+
+  // Pickup handover confirmation modal state (Phase 8)
+  const [pickupModalOpen, setPickupModalOpen] = useState(false);
+  const [selectedPickupOrder, setSelectedPickupOrder] = useState<StaffOrder | null>(null);
+  const [isCompletingPickup, setIsCompletingPickup] = useState(false);
+
   // Auto-refresh orders every 10 seconds
-  const fetchOrders = async () => {
+  const fetchOrders = React.useCallback(async () => {
     try {
       setRefreshing(true);
       const res = await fetch(`/api/orders?canteenId=${canteen.id}`);
@@ -98,12 +125,90 @@ export default function StaffDashboardClient({ canteen, initialOrders }: StaffDa
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [canteen.id]);
 
   useEffect(() => {
     const interval = setInterval(fetchOrders, 10000);
     return () => clearInterval(interval);
-  }, [canteen.id]);
+  }, [fetchOrders]);
+
+  // Acknowledge order receipt (Phase 2 & Phase 7)
+  const handleAcknowledgeTicket = async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}/acknowledge`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || 'Failed to acknowledge order ticket', 'error');
+      } else {
+        toast('Order ticket acknowledged. Customer notified via email.', 'success');
+        fetchOrders();
+      }
+    } catch {
+      toast('Network error acknowledging order ticket', 'error');
+    }
+  };
+
+  // Confirm manual payment collection (Phase 7)
+  const handleConfirmPayment = async () => {
+    if (!selectedPaymentOrder) return;
+    setIsConfirmingPayment(true);
+    try {
+      const res = await fetch(`/api/orders/${selectedPaymentOrder.id}/confirm-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentMethod: selectedPaymentOrder.payment?.method || 'CASH_AT_COUNTER',
+          notes: 'Cash/UPI payment collected and verified at counter by staff',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || 'Failed to confirm payment collection', 'error');
+      } else {
+        toast(
+          `Payment of ₹${Number(selectedPaymentOrder.total).toFixed(2)} verified & recorded!`,
+          'success'
+        );
+        setPaymentModalOpen(false);
+        setSelectedPaymentOrder(null);
+        fetchOrders();
+      }
+    } catch {
+      toast('Network error confirming payment collection', 'error');
+    } finally {
+      setIsConfirmingPayment(false);
+    }
+  };
+
+  // Complete pickup handover (Phase 8)
+  const handleConfirmPickupHandover = async () => {
+    if (!selectedPickupOrder) return;
+    setIsCompletingPickup(true);
+    try {
+      const res = await fetch('/api/orders/verify-pickup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pickupToken: selectedPickupOrder.pickupToken }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || 'Pickup handover verification failed', 'error');
+      } else {
+        toast('Pickup verified! Order marked as COLLECTED.', 'success');
+        setPickupModalOpen(false);
+        setSelectedPickupOrder(null);
+        fetchOrders();
+      }
+    } catch {
+      toast('Network error during pickup handover', 'error');
+    } finally {
+      setIsCompletingPickup(false);
+    }
+  };
 
   // Update order status action
   const handleStatusChange = async (orderId: string, toStatus: OrderStatus, reason?: string) => {
@@ -419,6 +524,62 @@ export default function StaffDashboardClient({ canteen, initialOrders }: StaffDa
                       <span className="font-bold">Rejection Reason:</span> {order.rejectionReason}
                     </div>
                   )}
+
+                  {/* Payment Section & Collection Checkbox (Phase 7) */}
+                  <div className="bg-stone-50 border border-stone-200/90 rounded-xl p-3 text-xs space-y-2 mt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-stone-700 flex items-center gap-1.5">
+                        <CreditCard className="w-3.5 h-3.5 text-stone-500" />
+                        <span>Payment Status:</span>
+                      </span>
+                      <span
+                        className={`font-mono font-bold text-[11px] px-2 py-0.5 rounded uppercase tracking-wider ${
+                          order.payment?.status === PaymentStatus.PAID ||
+                          order.payment?.status === PaymentStatus.COMPLETED
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : order.payment?.status === PaymentStatus.REFUNDED
+                            ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                            : 'bg-amber-100 text-amber-800 border border-amber-300'
+                        }`}
+                      >
+                        {order.payment?.status || 'UNPAID'}
+                      </span>
+                    </div>
+
+                    {order.payment?.status !== PaymentStatus.REFUNDED && (
+                      <div className="pt-2 border-t border-stone-200/70">
+                        {order.payment?.status === PaymentStatus.PAID ||
+                        order.payment?.status === PaymentStatus.COMPLETED ? (
+                          <div className="flex items-center gap-2 text-emerald-800 font-semibold text-xs">
+                            <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <span>Payment collected and verified</span>
+                            {order.payment?.verifiedAt && (
+                              <span className="text-[10px] text-emerald-600 font-normal ml-auto">
+                                Verified {new Date(order.payment.verifiedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <label
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setSelectedPaymentOrder(order);
+                              setPaymentModalOpen(true);
+                            }}
+                            className="flex items-center gap-2 cursor-pointer text-stone-700 hover:text-stone-900 font-medium select-none"
+                          >
+                            <input
+                              type="checkbox"
+                              readOnly
+                              checked={false}
+                              className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 border-stone-300 cursor-pointer"
+                            />
+                            <span>Payment collected and verified</span>
+                          </label>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Status Transition Action Buttons */}
@@ -429,24 +590,36 @@ export default function StaffDashboardClient({ canteen, initialOrders }: StaffDa
 
                   {/* Status: PLACED */}
                   {order.status === OrderStatus.PLACED && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => handleStatusChange(order.id, OrderStatus.ACCEPTED)}
-                        className="py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Accept Order</span>
-                      </button>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => handleStatusChange(order.id, OrderStatus.ACCEPTED)}
+                          className="py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Accept Order</span>
+                        </button>
 
+                        <button
+                          onClick={() => {
+                            setRejectOrderId(order.id);
+                            setRejectModalOpen(true);
+                          }}
+                          className="py-2.5 px-3 rounded-xl bg-stone-100 hover:bg-rose-50 hover:text-rose-600 text-stone-700 border border-stone-200 font-bold text-xs transition flex items-center justify-center gap-1.5"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Reject</span>
+                        </button>
+                      </div>
+
+                      {/* Ticket Acknowledged Action (Phase 2) */}
                       <button
-                        onClick={() => {
-                          setRejectOrderId(order.id);
-                          setRejectModalOpen(true);
-                        }}
-                        className="py-2.5 px-3 rounded-xl bg-stone-100 hover:bg-rose-50 hover:text-rose-600 text-stone-700 border border-stone-200 font-bold text-xs transition flex items-center justify-center gap-1.5"
+                        onClick={() => handleAcknowledgeTicket(order.id)}
+                        className="w-full py-1.5 px-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-semibold transition flex items-center justify-center gap-1"
+                        title="Notify customer that staff acknowledged ticket receipt"
                       >
-                        <XCircle className="w-3.5 h-3.5" />
-                        <span>Reject</span>
+                        <Clock className="w-3 h-3 text-stone-500" />
+                        <span>Acknowledge Ticket Receipt</span>
                       </button>
                     </div>
                   )}
@@ -473,15 +646,29 @@ export default function StaffDashboardClient({ canteen, initialOrders }: StaffDa
                     </button>
                   )}
 
-                  {/* Status: READY */}
+                  {/* Status: READY (Phase 8 Pickup Completion Interface) */}
                   {order.status === OrderStatus.READY && (
-                    <button
-                      onClick={() => handleStatusChange(order.id, OrderStatus.COLLECTED)}
-                      className="w-full py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5"
-                    >
-                      <CheckCheck className="w-4 h-4 text-emerald-400" />
-                      <span>Mark Collected (Handover)</span>
-                    </button>
+                    <div className="space-y-2">
+                      {!(order.payment?.status === PaymentStatus.PAID || order.payment?.status === PaymentStatus.COMPLETED) && (
+                        <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-tight">
+                          <span className="font-bold flex items-center gap-1 mb-0.5">
+                            <ShieldAlert className="w-3 h-3 text-amber-600" /> Payment Required:
+                          </span>
+                          Payment must be collected and verified before completing pickup, according to the configured canteen policy.
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setSelectedPickupOrder(order);
+                          setPickupModalOpen(true);
+                        }}
+                        className="w-full py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5"
+                      >
+                        <CheckCheck className="w-4 h-4 text-emerald-400" />
+                        <span>Confirm Order Pickup (Handover)</span>
+                      </button>
+                    </div>
                   )}
 
                   {/* Status: COLLECTED */}
@@ -512,6 +699,198 @@ export default function StaffDashboardClient({ canteen, initialOrders }: StaffDa
           setRejectOrderId(null);
         }}
       />
+
+      {/* Confirm Payment Collection Modal (Phase 7 Specification) */}
+      {paymentModalOpen && selectedPaymentOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-100 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-bold text-stone-900 text-base">Confirm Payment Collection</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setPaymentModalOpen(false);
+                  setSelectedPaymentOrder(null);
+                }}
+                className="text-stone-400 hover:text-stone-600 text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed">
+              Have you received and verified the payment for this order?
+            </p>
+
+            <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200/80 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 font-medium">Order Number:</span>
+                <span className="font-mono font-bold text-stone-900">
+                  #{selectedPaymentOrder.orderNumber}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 font-medium">Amount Due:</span>
+                <span className="text-base font-extrabold text-stone-900 font-mono">
+                  ₹{Number(selectedPaymentOrder.total).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 font-medium">Current Payment Status:</span>
+                <span className="font-bold uppercase text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                  {selectedPaymentOrder.payment?.status || 'UNPAID'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 font-medium">Payment Method:</span>
+                <span className="font-semibold text-stone-700">
+                  {selectedPaymentOrder.payment?.method || 'CASH_AT_COUNTER'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentModalOpen(false);
+                  setSelectedPaymentOrder(null);
+                }}
+                className="px-4 py-2.5 text-xs font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isConfirmingPayment}
+                onClick={handleConfirmPayment}
+                className="px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+              >
+                {isConfirmingPayment ? 'Recording...' : 'Confirm Payment Received'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Order Pickup Handover Modal (Phase 8 Specification) */}
+      {pickupModalOpen && selectedPickupOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-100 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <PackageCheck className="w-5 h-5 text-brand-600" />
+                <h3 className="font-bold text-stone-900 text-base">Confirm Order Pickup</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setPickupModalOpen(false);
+                  setSelectedPickupOrder(null);
+                }}
+                className="text-stone-400 hover:text-stone-600 text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200/80 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 font-medium">Order Number:</span>
+                <span className="font-mono font-bold text-stone-900">
+                  #{selectedPickupOrder.orderNumber}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 font-medium">Pickup Token:</span>
+                <span className="font-mono font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
+                  {selectedPickupOrder.pickupToken}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 font-medium">Customer:</span>
+                <span className="font-bold text-stone-800">
+                  {selectedPickupOrder.customer.name}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-500 font-medium">Payment Status:</span>
+                <span
+                  className={`font-bold uppercase px-2 py-0.5 rounded ${
+                    selectedPickupOrder.payment?.status === PaymentStatus.PAID ||
+                    selectedPickupOrder.payment?.status === PaymentStatus.COMPLETED
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {selectedPickupOrder.payment?.status || 'UNPAID'}
+                </span>
+              </div>
+            </div>
+
+            {/* If payment outstanding, show policy block */}
+            {!(
+              selectedPickupOrder.payment?.status === PaymentStatus.PAID ||
+              selectedPickupOrder.payment?.status === PaymentStatus.COMPLETED
+            ) ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-2">
+                <p className="font-semibold flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  Payment Required Before Pickup
+                </p>
+                <p className="text-[11px] leading-relaxed">
+                  According to canteen policy, payment of ₹
+                  {Number(selectedPickupOrder.total).toFixed(2)} must be collected and verified before completing handover.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ord = selectedPickupOrder;
+                    setPickupModalOpen(false);
+                    setSelectedPaymentOrder(ord);
+                    setPaymentModalOpen(true);
+                  }}
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs transition"
+                >
+                  Collect & Verify Payment First
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-3 font-medium">
+                ✓ Payment has been verified. Hand over meal to student and complete pickup.
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPickupModalOpen(false);
+                  setSelectedPickupOrder(null);
+                }}
+                className="px-4 py-2.5 text-xs font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={
+                  isCompletingPickup ||
+                  !(
+                    selectedPickupOrder.payment?.status === PaymentStatus.PAID ||
+                    selectedPickupOrder.payment?.status === PaymentStatus.COMPLETED
+                  )
+                }
+                onClick={handleConfirmPickupHandover}
+                className="px-5 py-2.5 text-xs font-bold text-white bg-stone-900 hover:bg-stone-800 rounded-xl transition flex items-center gap-1.5 shadow-sm disabled:opacity-40"
+              >
+                {isCompletingPickup ? 'Completing...' : 'Confirm Pickup Handover'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Verify Pickup Token Dialog */}
       {verifyModalOpen && (

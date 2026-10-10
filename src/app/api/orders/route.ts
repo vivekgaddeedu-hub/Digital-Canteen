@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import prisma from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { createOrderSchema } from '@/lib/validations';
 import { generateOrderNumber, generatePickupToken, calculateOrderTotals } from '@/lib/order-utils';
-import { sendOrderConfirmationEmail } from '@/lib/email/email-service';
+import { sendOrderPlacedEmail } from '@/lib/email/email-service';
 import { OrderStatus, PaymentStatus, Role, PaymentMethod } from '@prisma/client';
 
 export async function POST(req: NextRequest) {
@@ -35,6 +36,11 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Generate cryptographic guest tracking token before transaction
+    const rawGuestToken = crypto.randomBytes(24).toString('hex');
+    const guestTrackingTokenHash = crypto.createHash('sha256').update(rawGuestToken).digest('hex');
+    const trackingTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     // 3. Atomically validate slot and items in a database transaction
     const orderResult = await prisma.$transaction(async (tx) => {
@@ -134,16 +140,16 @@ export async function POST(req: NextRequest) {
       const orderNumber = generateOrderNumber();
       const pickupToken = generatePickupToken();
 
-      // 10. Determine payment status:
-      // If Cash on Pickup or Simulated Card/UPI, mark appropriate status
+      // 11. Determine payment status:
+      // SIMULATED_CARD is treated as paid online; counter/UPI is UNPAID until staff verifies
       const initialPaymentStatus =
-        paymentMethod === PaymentMethod.CASH_ON_PICKUP
-          ? PaymentStatus.PENDING
-          : PaymentStatus.COMPLETED;
+        paymentMethod === PaymentMethod.SIMULATED_CARD
+          ? PaymentStatus.PAID
+          : PaymentStatus.UNPAID;
 
-      const transactionRef = `SIM-TXN-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const transactionRef = `TXN-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-      // 11. Create the Order with all relations atomically
+      // 12. Create the Order with all relations atomically
       const createdOrder = await tx.order.create({
         data: {
           orderNumber,
@@ -157,6 +163,8 @@ export async function POST(req: NextRequest) {
           total: totals.total,
           specialInstructions: specialInstructions || null,
           pickupToken,
+          guestTrackingTokenHash,
+          trackingTokenExpiresAt,
           items: {
             create: orderItemDataToCreate.map((item) => ({
               menuItemId: item.menuItemId,
@@ -174,14 +182,14 @@ export async function POST(req: NextRequest) {
               method: paymentMethod,
               status: initialPaymentStatus,
               transactionRef,
-              isSimulated: true,
+              isSimulated: paymentMethod === PaymentMethod.SIMULATED_CARD || paymentMethod === PaymentMethod.SIMULATED_UPI,
             },
           },
           statusHistory: {
             create: {
               fromStatus: null,
               toStatus: OrderStatus.PLACED,
-              note: 'Order successfully submitted by customer.',
+              note: 'Order successfully submitted by customer. Awaiting kitchen review.',
               changedByUserId: auth.user.userId,
             },
           },
@@ -194,7 +202,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // 12. Audit log
+      // 13. Audit log
       await tx.auditLog.create({
         data: {
           userId: auth.user.userId,
@@ -205,6 +213,7 @@ export async function POST(req: NextRequest) {
             orderNumber: createdOrder.orderNumber,
             total: totals.total,
             itemCount: requestedItems.length,
+            paymentStatus: initialPaymentStatus,
           }),
         },
       });
@@ -212,11 +221,13 @@ export async function POST(req: NextRequest) {
       return createdOrder;
     });
 
-    // Send order confirmation email asynchronously without blocking the response
-    sendOrderConfirmationEmail(auth.user.email, {
+    // 14. Send Order Placed email asynchronously without blocking the response
+    sendOrderPlacedEmail(auth.user.email, {
+      orderId: orderResult.id,
       orderNumber: orderResult.orderNumber,
       customerName: auth.user.name,
       canteenName: orderResult.canteen.name,
+      canteenLocation: orderResult.canteen.location,
       pickupSlot: `${orderResult.pickupSlot.startTime} - ${orderResult.pickupSlot.endTime}`,
       pickupToken: orderResult.pickupToken,
       items: orderResult.items.map((i) => ({
@@ -230,15 +241,19 @@ export async function POST(req: NextRequest) {
       convenienceFee: Number(orderResult.convenienceFee),
       total: Number(orderResult.total),
       status: orderResult.status,
+      paymentStatus: orderResult.payment?.status || 'UNPAID',
       specialInstructions: orderResult.specialInstructions,
+      guestTrackingToken: rawGuestToken,
     }).catch((err) => {
-      console.warn('Order confirmation email failed (non-fatal):', err);
+      console.warn('Order placed email failed (non-fatal):', err);
     });
 
     return NextResponse.json(
       {
         message: 'Order placed successfully',
         order: orderResult,
+        guestTrackingToken: rawGuestToken,
+        trackingUrl: `/track-order/${orderResult.id}?token=${rawGuestToken}`,
       },
       { status: 201 }
     );

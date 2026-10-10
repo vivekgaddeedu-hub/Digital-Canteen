@@ -19,8 +19,8 @@ export function getEmailConfig(): EmailConfig {
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
   const user = process.env.SMTP_USER || '';
   const pass = process.env.SMTP_PASS || '';
-  const fromEmail = process.env.SMTP_FROM_EMAIL || 'no-reply@quickbite.campus.edu';
-  const fromName = process.env.SMTP_FROM_NAME || 'QUICKBITE Campus Canteen';
+  const fromEmail = process.env.SMTP_FROM_EMAIL || 'orders@quickbite.campus.edu';
+  const fromName = process.env.SMTP_FROM_NAME || 'QUICKBITE';
   const appBaseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
 
   const config: EmailConfig = {
@@ -49,8 +49,7 @@ export function getEmailTransporter(): Transporter {
 
   const config = getEmailConfig();
 
-  // If in test environment or no remote SMTP server is configured,
-  // use jsonTransport to verify templates and prevent connection failures
+  // If in test environment or test host is requested, use jsonTransport for deterministic tests
   if (
     process.env.NODE_ENV === 'test' ||
     process.env.SMTP_HOST === 'test' ||
@@ -63,15 +62,39 @@ export function getEmailTransporter(): Transporter {
     return transporterInstance;
   }
 
+  // Gmail special case
+  const isGmail =
+    config.host.toLowerCase().includes('gmail') ||
+    (config.auth?.user && config.auth.user.toLowerCase().endsWith('@gmail.com'));
+
+  if (isGmail && config.auth) {
+    transporterInstance = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: config.auth.user,
+        pass: config.auth.pass, // Expects Gmail App Password
+      },
+    });
+    return transporterInstance;
+  }
+
+  // Standard SMTP
   transporterInstance = nodemailer.createTransport({
     host: config.host,
     port: config.port,
     secure: config.secure,
     auth: config.auth,
-    pool: true,
-    maxConnections: 5,
-    maxMessages: 100,
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000,
   });
 
   return transporterInstance;
+}
+
+/**
+ * Resets the cached transporter (useful in testing)
+ */
+export function resetEmailTransporter(): void {
+  transporterInstance = null;
 }

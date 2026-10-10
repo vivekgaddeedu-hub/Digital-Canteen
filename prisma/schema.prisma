@@ -16,13 +16,16 @@ model User {
   role               Role                 @default(CUSTOMER)
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
-  emailVerified      Boolean              @default(false)
-  auditLogs          AuditLog[]
-  orders             Order[]
-  statusChanges      OrderStatusHistory[]
-  PasswordResetToken PasswordResetToken[]
-  staffAssignments   StaffAssignment[]
-  UserPreference     UserPreference?
+  emailVerified          Boolean              @default(false)
+  auditLogs              AuditLog[]
+  orders                 Order[]
+  statusChanges          OrderStatusHistory[]
+  PasswordResetToken     PasswordResetToken[]
+  staffAssignments       StaffAssignment[]
+  UserPreference         UserPreference?
+  verifiedPayments       Payment[]            @relation("PaymentVerifiedBy")
+  confirmedOrderPayments Order[]              @relation("OrderPaymentConfirmedBy")
+  verifiedOrderPickups   Order[]              @relation("OrderPickupVerifiedBy")
 
   @@index([email])
   @@index([role])
@@ -37,10 +40,14 @@ model Canteen {
   openingTime      String            @default("08:00")
   closingTime      String            @default("21:00")
   isActive         Boolean           @default(true)
-  imageUrl         String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  categories       Category[]
+  imageUrl             String?
+  paymentQrEnabled     Boolean           @default(true)
+  paymentUpiId         String?           @default("quickbite.campus@upi")
+  paymentInstructions  String?           @default("Scan with any UPI app (GPay / PhonePe / Paytm) or pay cash at the pickup counter.")
+  paymentPolicy        String            @default("PAY_BEFORE_PICKUP")
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  categories           Category[]
   menuItems        MenuItem[]
   orders           Order[]
   pickupSlots      PickupSlot[]
@@ -152,21 +159,30 @@ model Order {
   pickupToken         String               @unique
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  discount            Decimal              @default(0.00) @db.Decimal(10, 2)
-  promotionId         String?
-  canteen             Canteen              @relation(fields: [canteenId], references: [id])
-  customer            User                 @relation(fields: [customerId], references: [id])
-  pickupSlot          PickupSlot           @relation(fields: [pickupSlotId], references: [id])
-  Promotion           Promotion?           @relation(fields: [promotionId], references: [id])
-  items               OrderItem[]
-  statusHistory       OrderStatusHistory[]
-  payment             Payment?
+  discount                     Decimal              @default(0.00) @db.Decimal(10, 2)
+  promotionId                  String?
+  guestTrackingTokenHash       String?
+  trackingTokenExpiresAt       DateTime?
+  paymentCollectionConfirmedAt DateTime?
+  paymentConfirmedByStaffId    String?
+  pickupVerifiedAt             DateTime?
+  pickupVerifiedByStaffId      String?
+  canteen                      Canteen              @relation(fields: [canteenId], references: [id])
+  customer                     User                 @relation(fields: [customerId], references: [id])
+  pickupSlot                   PickupSlot           @relation(fields: [pickupSlotId], references: [id])
+  Promotion                    Promotion?           @relation(fields: [promotionId], references: [id])
+  paymentConfirmedByStaff      User?                @relation("OrderPaymentConfirmedBy", fields: [paymentConfirmedByStaffId], references: [id])
+  pickupVerifiedByStaff        User?                @relation("OrderPickupVerifiedBy", fields: [pickupVerifiedByStaffId], references: [id])
+  items                        OrderItem[]
+  statusHistory                OrderStatusHistory[]
+  payment                      Payment?
 
   @@index([customerId])
   @@index([canteenId])
   @@index([status])
   @@index([pickupSlotId])
   @@index([createdAt])
+  @@index([guestTrackingTokenHash])
 }
 
 model OrderItem {
@@ -186,20 +202,25 @@ model OrderItem {
 }
 
 model Payment {
-  id             String        @id @default(uuid())
-  orderId        String        @unique
-  amount         Decimal       @db.Decimal(10, 2)
-  currency       String        @default("INR")
-  method         PaymentMethod @default(SIMULATED_CARD)
-  status         PaymentStatus @default(PENDING)
-  transactionRef String?       @unique
-  isSimulated    Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id                String        @id @default(uuid())
+  orderId           String        @unique
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("INR")
+  method            PaymentMethod @default(SIMULATED_CARD)
+  status            PaymentStatus @default(PENDING)
+  transactionRef    String?       @unique
+  isSimulated       Boolean       @default(true)
+  verifiedByStaffId String?
+  verifiedAt        DateTime?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  verifiedByStaff   User?         @relation("PaymentVerifiedBy", fields: [verifiedByStaffId], references: [id])
 
   @@index([orderId])
   @@index([status])
+  @@index([verifiedByStaffId])
 }
 
 model OrderStatusHistory {
@@ -311,6 +332,22 @@ model UserPreference {
   User              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model NotificationLog {
+  id           String   @id @default(uuid())
+  orderId      String?
+  recipient    String
+  subject      String
+  templateType String
+  status       String   @default("SENT")
+  errorMessage String?
+  metadata     String?
+  createdAt    DateTime @default(now())
+
+  @@index([orderId])
+  @@index([recipient])
+  @@index([createdAt])
+}
+
 enum Role {
   CUSTOMER
   STAFF
@@ -328,13 +365,18 @@ enum OrderStatus {
 }
 
 enum PaymentStatus {
+  UNPAID
   PENDING
+  PAID
   COMPLETED
   FAILED
   REFUNDED
+  PARTIALLY_REFUNDED
 }
 
 enum PaymentMethod {
+  UPI_QR
+  CASH_AT_COUNTER
   SIMULATED_CARD
   SIMULATED_UPI
   CASH_ON_PICKUP
