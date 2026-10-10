@@ -7,6 +7,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { PaymentMethod } from '@prisma/client';
+import PaymentQrCode from '@/components/PaymentQrCode';
 import {
   Clock,
   CreditCard,
@@ -277,32 +278,51 @@ export default function CheckoutPage() {
               </label>
 
               {/* Option 2: UPI */}
-              <label
-                className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition ${
+              <div
+                className={`rounded-2xl border transition overflow-hidden ${
                   paymentMethod === PaymentMethod.SIMULATED_UPI
-                    ? 'bg-brand-50 border-brand-500 ring-2 ring-brand-500/20'
+                    ? 'bg-brand-50/30 border-brand-500 ring-2 ring-brand-500/20'
                     : 'bg-white border-stone-200 hover:border-stone-300'
                 }`}
               >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  checked={paymentMethod === PaymentMethod.SIMULATED_UPI}
-                  onChange={() => setPaymentMethod(PaymentMethod.SIMULATED_UPI)}
-                  className="mt-1 text-brand-600 focus:ring-brand-500"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <QrCode className="w-4 h-4 text-indigo-600" />
-                    <span className="text-xs font-bold text-stone-900">
-                      UPI QR Payment (GPay, PhonePe, Paytm & BHIM)
-                    </span>
+                <label className="flex items-start gap-3.5 p-4 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    checked={paymentMethod === PaymentMethod.SIMULATED_UPI}
+                    onChange={() => setPaymentMethod(PaymentMethod.SIMULATED_UPI)}
+                    className="mt-1 text-brand-600 focus:ring-brand-500"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-indigo-600" />
+                      <span className="text-xs font-bold text-stone-900">
+                        UPI QR Payment (Google Pay / PhonePe / Paytm / BHIM)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-500 mt-0.5 leading-relaxed">
+                      Scan UPI QR to Santosh Reddy (avi258369@oksbi) using any UPI application.
+                    </p>
                   </div>
-                  <p className="text-[11px] text-stone-500 mt-0.5 leading-relaxed">
-                    Scan UPI QR to Santosh Reddy (avi258369@oksbi) on order tracking page or at counter pickup.
-                  </p>
-                </div>
-              </label>
+                </label>
+
+                {/* Visible QR Code Display when Selected */}
+                {paymentMethod === PaymentMethod.SIMULATED_UPI && (
+                  <div className="px-4 pb-4 pt-1 border-t border-brand-100/60">
+                    <PaymentQrCode
+                      orderNumber="CHECKOUT"
+                      amount={total}
+                      paymentStatus="UNPAID"
+                      canteenName={canteenName || 'QuickBite Canteen'}
+                      upiId="avi258369@oksbi"
+                      payeeName="Santosh Reddy"
+                      qrImageUrl="/images/upi-payment-qr.jpg"
+                      compact={true}
+                      paymentInstructions="Scan and complete payment with any UPI app. Staff will verify transaction at the counter upon food collection."
+                    />
+                  </div>
+                )}
+              </div>
 
               {/* Option 3: Cash */}
               <label

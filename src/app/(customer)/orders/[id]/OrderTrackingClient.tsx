@@ -7,6 +7,7 @@ import StatusBadge from '@/components/StatusBadge';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useToast } from '@/context/ToastContext';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
+import PaymentQrCode from '@/components/PaymentQrCode';
 import {
   Clock,
   MapPin,
@@ -284,6 +285,23 @@ export default function OrderTrackingClient({ initialOrder }: { initialOrder: Or
           )}
         </div>
       </div>
+
+      {/* UPI Payment QR Code Card if payment is not completed */}
+      {order.payment?.status !== PaymentStatus.COMPLETED &&
+        order.payment?.status !== ('PAID' as any) &&
+        !isCancelled &&
+        !isRejected && (
+          <PaymentQrCode
+            orderNumber={order.orderNumber}
+            orderId={order.id}
+            amount={order.total}
+            paymentStatus={order.payment?.status || 'UNPAID'}
+            canteenName={order.canteen.name}
+            upiId="avi258369@oksbi"
+            payeeName="Santosh Reddy"
+            qrImageUrl="/images/upi-payment-qr.jpg"
+          />
+        )}
 
       {/* Order Item Snapshot & Payment Summary */}
       <div className="bg-white rounded-3xl border border-stone-200/90 p-6 sm:p-8 shadow-sm space-y-5">
