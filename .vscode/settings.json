@@ -17,5 +17,7 @@
     "**/.next/*/**": true,
     "**/.pg-env/*/**": true,
     "**/.pg-data/*/**": true
-  }
+  },
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore"
 }
