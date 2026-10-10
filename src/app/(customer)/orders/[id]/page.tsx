@@ -37,21 +37,50 @@ export default async function OrderDetailsPage({
     redirect('/orders');
   }
 
-  // Convert Decimals to string/number for client component serialization
+  // Convert Decimals to numbers and Dates to strings for safe Client Component serialization
   const formattedOrder = {
-    ...order,
+    id: order.id,
+    orderNumber: order.orderNumber,
+    status: order.status,
     subtotal: Number(order.subtotal),
     tax: Number(order.tax),
     convenienceFee: Number(order.convenienceFee),
+    discount: Number(order.discount || 0),
     total: Number(order.total),
+    pickupToken: order.pickupToken,
+    specialInstructions: order.specialInstructions,
+    rejectionReason: order.rejectionReason,
+    cancellationReason: order.cancellationReason,
     createdAt: order.createdAt.toISOString(),
+    canteen: {
+      name: order.canteen.name,
+      location: order.canteen.location,
+    },
+    pickupSlot: {
+      startTime: order.pickupSlot.startTime,
+      endTime: order.pickupSlot.endTime,
+      date: order.pickupSlot.date,
+    },
+    payment: order.payment
+      ? {
+          method: order.payment.method,
+          status: order.payment.status,
+          transactionRef: order.payment.transactionRef,
+          isSimulated: order.payment.isSimulated,
+        }
+      : null,
     items: order.items.map((i) => ({
-      ...i,
+      id: i.id,
+      nameSnapshot: i.nameSnapshot,
       unitPriceSnapshot: Number(i.unitPriceSnapshot),
+      quantity: i.quantity,
       subtotal: Number(i.subtotal),
+      notes: i.notes || null,
     })),
     statusHistory: order.statusHistory.map((h) => ({
-      ...h,
+      id: h.id,
+      toStatus: h.toStatus,
+      note: h.note || null,
       createdAt: h.createdAt.toISOString(),
     })),
   };
