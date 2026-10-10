@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 import StaffMenuClient from './StaffMenuClient';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 export default async function StaffMenuPage() {
   const session = await getSessionUser();
@@ -39,9 +39,9 @@ export default async function StaffMenuPage() {
     redirect('/staff');
   }
 
-  const formattedCategories = canteen.categories.map((c) => ({
+  const formattedCategories = (canteen.categories || []).map((c: any) => ({
     ...c,
-    menuItems: c.menuItems.map((m) => ({
+    menuItems: (c.menuItems || []).map((m: any) => ({
       ...m,
       price: Number(m.price),
     })),

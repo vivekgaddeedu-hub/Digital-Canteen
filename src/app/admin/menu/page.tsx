@@ -24,7 +24,7 @@ export default async function AdminMenuPage() {
     orderBy: { sortOrder: 'asc' },
   });
 
-  const formattedItems = items.map((i) => ({
+  const formattedItems = (items || []).map((i: any) => ({
     ...i,
     price: Number(i.price),
   }));
@@ -32,8 +32,8 @@ export default async function AdminMenuPage() {
   return (
     <AdminMenuClient
       initialItems={formattedItems as any}
-      canteens={canteens}
-      categories={categories}
+      canteens={canteens as any}
+      categories={categories as any}
     />
   );
 }

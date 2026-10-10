@@ -1,4 +1,4 @@
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '@/types/database';
 
 export const TAX_RATE = 0.05; // 5% GST / Campus Sales Tax
 export const CONVENIENCE_FEE = 5.00; // Flat packaging / convenience charge

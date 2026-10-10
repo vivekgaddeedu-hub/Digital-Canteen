@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 import { User, Mail, Phone, Calendar, Shield, ShoppingBag, Clock } from 'lucide-react';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '@/types/database';
 
 export default async function CustomerProfilePage() {
   const session = await getSessionUser();
@@ -31,15 +31,16 @@ export default async function CustomerProfilePage() {
     redirect('/login');
   }
 
-  const totalOrders = user.orders.length;
-  const activeOrders = user.orders.filter((o) =>
+  const userOrders = (user.orders || []) as any[];
+  const totalOrders = userOrders.length;
+  const activeOrders = userOrders.filter((o: any) =>
     (
       [OrderStatus.PLACED, OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY] as OrderStatus[]
     ).includes(o.status)
   ).length;
-  const totalSpend = user.orders
-    .filter((o) => o.status !== OrderStatus.CANCELLED && o.status !== OrderStatus.REJECTED)
-    .reduce((sum, o) => sum + Number(o.total), 0);
+  const totalSpend = userOrders
+    .filter((o: any) => o.status !== OrderStatus.CANCELLED && o.status !== OrderStatus.REJECTED)
+    .reduce((sum: number, o: any) => sum + Number(o.total), 0);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

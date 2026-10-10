@@ -175,7 +175,7 @@ export default function CustomerDashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {activeOrders.map((ord) => (
+            {(activeOrders || []).map((ord: any) => (
               <div
                 key={ord.id}
                 className="bg-white rounded-2xl border border-brand-200/90 p-5 shadow-xs relative overflow-hidden flex flex-col justify-between space-y-4"
@@ -251,7 +251,7 @@ export default function CustomerDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {canteens.map((canteen) => (
+          {(canteens || []).map((canteen: any) => (
             <Link
               key={canteen.id}
               href={`/canteen/${canteen.slug}`}

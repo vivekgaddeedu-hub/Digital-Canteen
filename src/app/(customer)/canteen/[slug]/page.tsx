@@ -46,14 +46,14 @@ export default async function CanteenMenuPage({
   // Format decimal prices to numbers for client components
   const formattedCanteen = {
     ...canteen,
-    categories: canteen.categories.map((cat) => ({
+    categories: (canteen.categories || []).map((cat: any) => ({
       ...cat,
-      menuItems: cat.menuItems.map((item) => ({
+      menuItems: (cat.menuItems || []).map((item: any) => ({
         ...item,
         price: Number(item.price),
       })),
     })),
-    pickupSlots: canteen.pickupSlots.map((slot) => ({
+    pickupSlots: (canteen.pickupSlots || []).map((slot: any) => ({
       ...slot,
       remainingCapacity: Math.max(0, slot.maxCapacity - slot.currentBookings),
       isFull: slot.currentBookings >= slot.maxCapacity,

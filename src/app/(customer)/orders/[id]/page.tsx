@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 import OrderTrackingClient from './OrderTrackingClient';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 export default async function OrderDetailsPage({
   params,
@@ -69,7 +69,7 @@ export default async function OrderDetailsPage({
           isSimulated: order.payment.isSimulated,
         }
       : null,
-    items: order.items.map((i) => ({
+    items: (order.items || []).map((i: any) => ({
       id: i.id,
       nameSnapshot: i.nameSnapshot,
       unitPriceSnapshot: Number(i.unitPriceSnapshot),
@@ -77,11 +77,11 @@ export default async function OrderDetailsPage({
       subtotal: Number(i.subtotal),
       notes: i.notes || null,
     })),
-    statusHistory: order.statusHistory.map((h) => ({
+    statusHistory: (order.statusHistory || []).map((h: any) => ({
       id: h.id,
       toStatus: h.toStatus,
       note: h.note || null,
-      createdAt: h.createdAt.toISOString(),
+      createdAt: h.createdAt instanceof Date ? h.createdAt.toISOString() : String(h.createdAt),
     })),
   };
 

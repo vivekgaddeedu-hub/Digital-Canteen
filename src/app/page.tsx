@@ -41,20 +41,20 @@ export default async function LandingPage() {
   }> = [];
 
   try {
-    canteens = await prisma.canteen.findMany({
+    canteens = (await prisma.canteen.findMany({
       where: { isActive: true },
       include: {
         _count: { select: { menuItems: true } },
       },
       take: 3,
-    });
+    })) as any;
 
-    featuredItems = await prisma.menuItem.findMany({
+    featuredItems = (await prisma.menuItem.findMany({
       where: { isAvailable: true },
       include: { canteen: true },
       take: 4,
       orderBy: { createdAt: 'desc' },
-    });
+    })) as any;
   } catch (err) {
     console.warn('LandingPage: Database unavailable during build or query:', err);
   }
@@ -242,7 +242,7 @@ export default async function LandingPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {canteens.map((c) => (
+          {(canteens || []).map((c: any) => (
             <Link
               key={c.id}
               href={`/canteen/${c.slug}`}
@@ -307,7 +307,7 @@ export default async function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredItems.map((item) => (
+            {(featuredItems || []).map((item: any) => (
               <div
                 key={item.id}
                 className="bg-white rounded-2xl border border-stone-200/90 overflow-hidden shadow-sm flex flex-col justify-between"

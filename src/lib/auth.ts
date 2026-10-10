@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import prisma from './prisma';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'quickbite_super_secure_jwt_token_secret_campus_digital_canteen_2026';
 export const TOKEN_COOKIE_NAME = 'qb_auth_token';
@@ -90,7 +90,7 @@ export async function getSessionUser(req?: NextRequest): Promise<TokenPayload | 
     email: dbUser.email,
     name: dbUser.name,
     role: dbUser.role,
-    assignedCanteenId: dbUser.staffAssignments[0]?.canteenId || null,
+    assignedCanteenId: dbUser.staffAssignments?.[0]?.canteenId || null,
   };
 }
 

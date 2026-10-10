@@ -1,6 +1,6 @@
 import prisma from '../src/lib/prisma';
 import crypto from 'crypto';
-import { OrderStatus, PaymentStatus, Role, PaymentMethod } from '@prisma/client';
+import { OrderStatus, PaymentStatus, Role, PaymentMethod } from '../src/types/database';
 import { generateOrderNumber, generatePickupToken } from '../src/lib/order-utils';
 import {
   sendOrderPlacedEmail,

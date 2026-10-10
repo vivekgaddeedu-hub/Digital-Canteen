@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { getDashboardRouteForRole, getSafeRedirectUrl, createPasswordResetToken, consumePasswordResetToken } from '../src/lib/auth';
 import { getPersonalizedPromotions, validatePromotionCode } from '../src/lib/recommendations';
 import { sendWelcomeEmail, sendOrderConfirmationEmail, sendOrderReadyEmail } from '../src/lib/email/email-service';
-import { Role, OrderStatus } from '@prisma/client';
+import { Role, OrderStatus } from '../src/types/database';
 
 async function runE2EVerification() {
   console.log('🚀 Starting QUICKBITE V2 Comprehensive End-to-End Verification...\n');

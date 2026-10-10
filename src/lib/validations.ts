@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { OrderStatus, PaymentMethod, Role } from '@prisma/client';
+import { OrderStatus, PaymentMethod, Role } from '@/types/database';
 
 export const registerSchema = z
   .object({

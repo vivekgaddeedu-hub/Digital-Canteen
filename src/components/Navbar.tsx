@@ -16,7 +16,7 @@ import {
   X,
   Clock,
 } from 'lucide-react';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 export default function Navbar() {
   const { user, logout } = useAuth();

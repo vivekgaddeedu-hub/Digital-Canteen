@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 import StaffDashboardClient from './StaffDashboardClient';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 export default async function StaffPage({
   searchParams,
@@ -66,7 +66,7 @@ export default async function StaffPage({
     take: 60,
   });
 
-  const formattedOrders = orders.map((o) => ({
+  const formattedOrders = (orders || []).map((o: any) => ({
     id: o.id,
     orderNumber: o.orderNumber,
     customerId: o.customerId,
@@ -82,15 +82,15 @@ export default async function StaffPage({
     rejectionReason: o.rejectionReason,
     cancellationReason: o.cancellationReason,
     pickupToken: o.pickupToken,
-    paymentCollectionConfirmedAt: o.paymentCollectionConfirmedAt?.toISOString() || null,
+    paymentCollectionConfirmedAt: o.paymentCollectionConfirmedAt instanceof Date ? o.paymentCollectionConfirmedAt.toISOString() : (o.paymentCollectionConfirmedAt ? String(o.paymentCollectionConfirmedAt) : null),
     paymentConfirmedByStaffId: o.paymentConfirmedByStaffId || null,
-    pickupVerifiedAt: o.pickupVerifiedAt?.toISOString() || null,
+    pickupVerifiedAt: o.pickupVerifiedAt instanceof Date ? o.pickupVerifiedAt.toISOString() : (o.pickupVerifiedAt ? String(o.pickupVerifiedAt) : null),
     pickupVerifiedByStaffId: o.pickupVerifiedByStaffId || null,
-    createdAt: o.createdAt.toISOString(),
-    updatedAt: o.updatedAt.toISOString(),
+    createdAt: o.createdAt instanceof Date ? o.createdAt.toISOString() : String(o.createdAt),
+    updatedAt: o.updatedAt instanceof Date ? o.updatedAt.toISOString() : String(o.updatedAt),
     customer: o.customer,
     pickupSlot: o.pickupSlot,
-    items: o.items.map((i) => ({
+    items: (o.items || []).map((i: any) => ({
       id: i.id,
       orderId: i.orderId,
       menuItemId: i.menuItemId,

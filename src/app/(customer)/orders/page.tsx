@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 import StatusBadge from '@/components/StatusBadge';
 import { Clock, ArrowRight, Store, ShoppingBag } from 'lucide-react';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '@/types/database';
 
 export default async function CustomerOrdersPage() {
   const session = await getSessionUser();
@@ -64,7 +64,7 @@ export default async function CustomerOrdersPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {orders.map((order) => {
+          {(orders || []).map((order: any) => {
             const isActive = (
               [
                 OrderStatus.PLACED,
@@ -95,10 +95,10 @@ export default async function CustomerOrdersPage() {
                   <div className="space-y-0.5">
                     <h3 className="font-bold text-stone-900 text-base flex items-center gap-1.5">
                       <Store className="w-4 h-4 text-brand-600" />
-                      {order.canteen.name}
+                      {order.canteen?.name}
                     </h3>
                     <p className="text-xs text-stone-500">
-                      {order.items.length} items: {order.items.map((i) => `${i.quantity}x ${i.nameSnapshot}`).join(', ')}
+                      {(order.items || []).length} items: {(order.items || []).map((i: any) => `${i.quantity}x ${i.nameSnapshot}`).join(', ')}
                     </p>
                   </div>
 

@@ -8,7 +8,6 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-COPY prisma ./prisma/
 
 RUN npm ci
 
@@ -21,10 +20,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma Client
+# Build Next.js application in standalone mode
 ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/quickbite?schema=public"
 ENV JWT_SECRET="build_jwt_secret_placeholder_for_nextjs_build"
-RUN npx prisma generate
 
 # Build Next.js application in standalone mode
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -54,7 +52,6 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder /app/prisma ./prisma
 
 USER nextjs
 

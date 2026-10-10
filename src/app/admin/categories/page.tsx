@@ -25,7 +25,7 @@ export default async function AdminCategoriesPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {canteens.map((canteen) => (
+        {(canteens || []).map((canteen: any) => (
           <div key={canteen.id} className="bg-white rounded-3xl border border-stone-200/90 p-6 shadow-xs space-y-4">
             <h2 className="text-base font-extrabold text-stone-900 pb-2 border-b border-stone-100 flex items-center gap-2">
               <FolderTree className="w-4 h-4 text-brand-600" />
@@ -33,7 +33,7 @@ export default async function AdminCategoriesPage() {
             </h2>
 
             <div className="space-y-2">
-              {canteen.categories.map((cat, idx) => (
+              {(canteen.categories || []).map((cat: any, idx: number) => (
                 <div
                   key={cat.id}
                   className="p-3 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-between text-xs"

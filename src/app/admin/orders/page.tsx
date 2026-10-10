@@ -45,7 +45,7 @@ export default async function AdminOrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {orders.map((o) => (
+              {(orders || []).map((o: any) => (
                 <tr key={o.id} className="hover:bg-stone-50 transition">
                   <td className="py-3.5 px-4 font-mono font-bold text-stone-900">
                     {o.orderNumber}
@@ -53,13 +53,13 @@ export default async function AdminOrdersPage() {
                       Token: {o.pickupToken}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 font-medium text-stone-700">{o.canteen.name}</td>
+                  <td className="py-3.5 px-4 font-medium text-stone-700">{o.canteen?.name}</td>
                   <td className="py-3.5 px-4">
-                    <p className="font-bold text-stone-900">{o.customer.name}</p>
-                    <p className="text-[10px] text-stone-400">{o.customer.email}</p>
+                    <p className="font-bold text-stone-900">{o.customer?.name}</p>
+                    <p className="text-[10px] text-stone-400">{o.customer?.email}</p>
                   </td>
                   <td className="py-3.5 px-4 text-stone-600">
-                    {o.pickupSlot.startTime} – {o.pickupSlot.endTime}
+                    {o.pickupSlot ? `${o.pickupSlot.startTime} – ${o.pickupSlot.endTime}` : 'Walk-in'}
                   </td>
                   <td className="py-3.5 px-4">
                     <StatusBadge status={o.status} size="sm" />

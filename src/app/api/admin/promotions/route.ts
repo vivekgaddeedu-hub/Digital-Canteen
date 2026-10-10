@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { promotionSchema } from '@/lib/validations';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, [Role.ADMIN]);
@@ -29,41 +29,38 @@ export async function GET(req: NextRequest) {
           })
         : [],
       promoIds.length > 0
-        ? prisma.promotionImpression.groupBy({
-            by: ['promotionId'],
-            where: { promotionId: { in: promoIds } },
-            _count: { id: true },
-          })
-        : [],
+        ? (prisma.$queryRaw(
+            `SELECT "promotionId", COUNT(*)::int as count FROM "PromotionImpression" WHERE "promotionId" = ANY($1) GROUP BY "promotionId"`,
+            promoIds
+          ) as Promise<Array<{ promotionId: string; count: number }>>)
+        : Promise.resolve([]),
       promoIds.length > 0
-        ? prisma.promotionClick.groupBy({
-            by: ['promotionId'],
-            where: { promotionId: { in: promoIds } },
-            _count: { id: true },
-          })
-        : [],
+        ? (prisma.$queryRaw(
+            `SELECT "promotionId", COUNT(*)::int as count FROM "PromotionClick" WHERE "promotionId" = ANY($1) GROUP BY "promotionId"`,
+            promoIds
+          ) as Promise<Array<{ promotionId: string; count: number }>>)
+        : Promise.resolve([]),
       promoIds.length > 0
-        ? prisma.order.groupBy({
-            by: ['promotionId'],
-            where: { promotionId: { in: promoIds } },
-            _count: { id: true },
-          })
-        : [],
+        ? (prisma.$queryRaw(
+            `SELECT "promotionId", COUNT(*)::int as count FROM "Order" WHERE "promotionId" = ANY($1) GROUP BY "promotionId"`,
+            promoIds
+          ) as Promise<Array<{ promotionId: string; count: number }>>)
+        : Promise.resolve([]),
     ]);
 
-    const categoryMap = new Map(categories.map((c) => [c.id, c]));
-    const impMap = new Map(impressionsList.map((i) => [i.promotionId, i._count.id]));
-    const clickMap = new Map(clicksList.map((c) => [c.promotionId, c._count.id]));
+    const categoryMap = new Map((categories as any[]).map((c: any) => [c.id, c]));
+    const impMap = new Map((impressionsList as any[]).map((i: any) => [i.promotionId, Number(i.count)]));
+    const clickMap = new Map((clicksList as any[]).map((c: any) => [c.promotionId, Number(c.count)]));
     const orderMap = new Map(
-      ordersList
-        .filter((o) => o.promotionId !== null)
-        .map((o) => [o.promotionId as string, o._count.id])
+      (ordersList as any[])
+        .filter((o: any) => o.promotionId !== null)
+        .map((o: any) => [o.promotionId as string, Number(o.count)])
     );
 
     const data = promotions.map((p) => {
-      const impressions = impMap.get(p.id) || 0;
-      const clicks = clickMap.get(p.id) || 0;
-      const orders = orderMap.get(p.id) || 0;
+      const impressions = Number(impMap.get(p.id) || 0);
+      const clicks = Number(clickMap.get(p.id) || 0);
+      const orders = Number(orderMap.get(p.id) || 0);
       const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(1) : '0.0';
 
       return {

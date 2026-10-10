@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { userPreferenceSchema } from '@/lib/validations';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, [Role.CUSTOMER, Role.STAFF, Role.ADMIN]);

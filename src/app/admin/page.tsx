@@ -1,7 +1,7 @@
 import React from 'react';
 import prisma from '@/lib/prisma';
 import AnalyticsDashboardClient from './AnalyticsDashboardClient';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '@/types/database';
 
 export const revalidate = 0; // Dynamic server analytics
 
@@ -19,31 +19,33 @@ export default async function AdminPage() {
     orderBy: { createdAt: 'asc' },
   });
 
-  const validOrders = orders.filter(
-    (o) => o.status !== OrderStatus.CANCELLED && o.status !== OrderStatus.REJECTED
+  const orderList = (orders || []) as any[];
+
+  const validOrders = orderList.filter(
+    (o: any) => o.status !== OrderStatus.CANCELLED && o.status !== OrderStatus.REJECTED
   );
-  const completedOrders = orders.filter((o) => o.status === OrderStatus.COLLECTED);
-  const cancelledOrders = orders.filter((o) => o.status === OrderStatus.CANCELLED);
-  const rejectedOrders = orders.filter((o) => o.status === OrderStatus.REJECTED);
-  const activeOrders = orders.filter((o) =>
+  const completedOrders = orderList.filter((o: any) => o.status === OrderStatus.COLLECTED);
+  const cancelledOrders = orderList.filter((o: any) => o.status === OrderStatus.CANCELLED);
+  const rejectedOrders = orderList.filter((o: any) => o.status === OrderStatus.REJECTED);
+  const activeOrders = orderList.filter((o: any) =>
     (
       [OrderStatus.PLACED, OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY] as OrderStatus[]
     ).includes(o.status)
   );
 
-  const grossRevenue = validOrders.reduce((sum, o) => sum + Number(o.total), 0);
+  const grossRevenue = validOrders.reduce((sum: number, o: any) => sum + Number(o.total), 0);
   const avgOrderValue = validOrders.length > 0 ? grossRevenue / validOrders.length : 0;
 
   // Status breakdown
   const statusCounts: Record<string, number> = {};
   for (const s of Object.values(OrderStatus)) {
-    statusCounts[s] = orders.filter((o) => o.status === s).length;
+    statusCounts[s] = orderList.filter((o: any) => o.status === s).length;
   }
 
   // Best sellers
   const itemMap = new Map<string, { name: string; quantity: number; revenue: number }>();
   for (const o of validOrders) {
-    for (const item of o.items) {
+    for (const item of (o.items || [])) {
       const existing = itemMap.get(item.nameSnapshot) || {
         name: item.nameSnapshot,
         quantity: 0,
@@ -61,7 +63,7 @@ export default async function AdminPage() {
   // Sales by Canteen
   const canteenMap = new Map<string, { name: string; orders: number; revenue: number }>();
   for (const o of validOrders) {
-    const cName = o.canteen.name;
+    const cName = o.canteen?.name || 'Unknown Canteen';
     const existing = canteenMap.get(cName) || { name: cName, orders: 0, revenue: 0 };
     existing.orders += 1;
     existing.revenue += Number(o.total);
@@ -71,8 +73,9 @@ export default async function AdminPage() {
 
   // Daily Trend
   const dailyMap = new Map<string, { date: string; orders: number; revenue: number }>();
-  for (const o of orders) {
-    const dayKey = o.createdAt.toISOString().slice(0, 10);
+  for (const o of orderList) {
+    const dateObj = o.createdAt instanceof Date ? o.createdAt : new Date(o.createdAt);
+    const dayKey = dateObj.toISOString().slice(0, 10);
     const existing = dailyMap.get(dayKey) || { date: dayKey, orders: 0, revenue: 0 };
     existing.orders += 1;
     if (o.status !== OrderStatus.CANCELLED && o.status !== OrderStatus.REJECTED) {

@@ -5,7 +5,7 @@ import { requireAuth } from '@/lib/auth';
 import { createOrderSchema } from '@/lib/validations';
 import { generateOrderNumber, generatePickupToken, calculateOrderTotals } from '@/lib/order-utils';
 import { sendOrderPlacedEmail } from '@/lib/email/email-service';
-import { OrderStatus, PaymentStatus, Role, PaymentMethod } from '@prisma/client';
+import { OrderStatus, PaymentStatus, Role, PaymentMethod } from '@/types/database';
 
 export async function POST(req: NextRequest) {
   // 1. Authenticate Customer

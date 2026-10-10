@@ -1,7 +1,7 @@
 import React from 'react';
 import prisma from '@/lib/prisma';
 import AdminStaffClient from './AdminStaffClient';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 export const revalidate = 0;
 
@@ -25,5 +25,5 @@ export default async function AdminStaffPage() {
     orderBy: { name: 'asc' },
   });
 
-  return <AdminStaffClient initialStaff={staff as any} canteens={canteens} />;
+  return <AdminStaffClient initialStaff={staff as any} canteens={canteens as any} />;
 }

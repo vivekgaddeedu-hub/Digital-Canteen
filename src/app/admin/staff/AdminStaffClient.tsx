@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useToast } from '@/context/ToastContext';
 import { Users, Plus, ChefHat, ShieldCheck, Mail, Phone, Lock } from 'lucide-react';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 interface StaffUser {
   id: string;

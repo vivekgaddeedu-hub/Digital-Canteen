@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { hashPassword, verifyPassword, signToken, verifyToken } from '../src/lib/auth';
-import { Role } from '@prisma/client';
+import { Role } from '../src/types/database';
 
 describe('Security & Authentication Layer', () => {
   it('hashes passwords and verifies them accurately using bcrypt', async () => {

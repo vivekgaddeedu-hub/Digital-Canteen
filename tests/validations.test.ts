@@ -7,7 +7,7 @@ import {
   verifyPickupSchema,
   menuItemSchema,
 } from '../src/lib/validations';
-import { PaymentMethod } from '@prisma/client';
+import { PaymentMethod } from '../src/types/database';
 
 describe('Zod Input Validation Schemas', () => {
   it('validates customer registration requirements', () => {

@@ -7,7 +7,7 @@ import {
   TAX_RATE,
   CONVENIENCE_FEE,
 } from '../src/lib/order-utils';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '../src/types/database';
 
 describe('Order Business Logic & State Machine', () => {
   it('allows valid progressive status transitions', () => {

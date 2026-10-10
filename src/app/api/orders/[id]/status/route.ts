@@ -9,7 +9,7 @@ import {
   sendOrderCancelledEmail,
   sendOrderStatusEmail,
 } from '@/lib/email/email-service';
-import { OrderStatus, PaymentStatus, Role } from '@prisma/client';
+import { OrderStatus, PaymentStatus, Role } from '@/types/database';
 
 export async function PUT(
   req: NextRequest,

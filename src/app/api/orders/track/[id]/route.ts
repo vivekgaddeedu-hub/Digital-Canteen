@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import prisma from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 export async function GET(
   req: NextRequest,

@@ -55,12 +55,6 @@ jobs:
       - name: Install dependencies (clean install)
         run: npm ci
 
-      - name: Run Prisma Client generation
-        run: npx prisma generate
-
-      - name: Verify Database Schema Sync
-        run: npx prisma db push --skip-generate
-
       - name: Run TypeScript type check
         run: npx tsc --noEmit
 

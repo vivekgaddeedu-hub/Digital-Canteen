@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { UtensilsCrossed, Lock, Mail, ArrowRight, UserCheck, ChefHat, ShieldCheck } from 'lucide-react';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 function LoginForm() {
   const router = useRouter();

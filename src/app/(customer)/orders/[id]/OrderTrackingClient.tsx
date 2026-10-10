@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import StatusBadge from '@/components/StatusBadge';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useToast } from '@/context/ToastContext';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus } from '@/types/database';
 import PaymentQrCode from '@/components/PaymentQrCode';
 import {
   Clock,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { canteenSchema } from '@/lib/validations';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 export async function GET(
   req: NextRequest,
@@ -42,7 +42,7 @@ export async function GET(
     }
 
     // Attach remaining capacity to slots
-    const slotsWithAvailability = canteen.pickupSlots.map((slot) => ({
+    const slotsWithAvailability = (canteen.pickupSlots || []).map((slot: any) => ({
       ...slot,
       remainingCapacity: Math.max(0, slot.maxCapacity - slot.currentBookings),
       isFull: slot.currentBookings >= slot.maxCapacity,

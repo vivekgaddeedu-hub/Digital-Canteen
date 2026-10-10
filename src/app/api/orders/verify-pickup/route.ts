@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { verifyPickupSchema } from '@/lib/validations';
-import { OrderStatus, PaymentStatus, Role } from '@prisma/client';
+import { OrderStatus, PaymentStatus, Role } from '@/types/database';
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req, [Role.STAFF, Role.ADMIN]);

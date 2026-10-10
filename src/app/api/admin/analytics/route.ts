@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
-import { OrderStatus, Role } from '@prisma/client';
+import { OrderStatus, Role } from '@/types/database';
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, [Role.ADMIN]);

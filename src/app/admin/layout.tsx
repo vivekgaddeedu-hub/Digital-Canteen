@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 import {
   LayoutDashboard,
   Utensils,

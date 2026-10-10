@@ -22,7 +22,7 @@ export default async function CanteensPage() {
   }> = [];
 
   try {
-    canteens = await prisma.canteen.findMany({
+    canteens = (await prisma.canteen.findMany({
       where: { isActive: true },
       include: {
         categories: {
@@ -36,7 +36,7 @@ export default async function CanteensPage() {
         },
       },
       orderBy: { name: 'asc' },
-    });
+    })) as any;
   } catch (err) {
     console.warn('CanteensPage: Database unavailable during build or query:', err);
   }
@@ -65,7 +65,7 @@ export default async function CanteensPage() {
 
       {/* Canteens Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {canteens.map((canteen) => (
+        {(canteens || []).map((canteen: any) => (
           <div
             key={canteen.id}
             className="bg-white rounded-3xl border border-stone-200/90 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between group"
@@ -107,7 +107,7 @@ export default async function CanteensPage() {
 
                 {/* Categories sample */}
                 <div className="flex flex-wrap gap-1.5 pt-2">
-                  {canteen.categories.map((cat, i) => (
+                  {(canteen.categories || []).map((cat: any, i: number) => (
                     <span
                       key={i}
                       className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-600"

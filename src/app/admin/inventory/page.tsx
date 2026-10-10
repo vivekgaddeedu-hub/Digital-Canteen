@@ -16,11 +16,11 @@ export default async function AdminInventoryPage() {
     orderBy: { currentStock: 'asc' },
   });
 
-  const formatted = records.map((r) => ({
+  const formatted = (records || []).map((r: any) => ({
     ...r,
     menuItem: {
       ...r.menuItem,
-      price: Number(r.menuItem.price),
+      price: Number(r.menuItem?.price || 0),
     },
   }));
 

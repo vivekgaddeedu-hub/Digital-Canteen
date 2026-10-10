@@ -1,5 +1,5 @@
 import React from 'react';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '@/types/database';
 import { Clock, CheckCircle, ChefHat, PackageCheck, CheckCheck, XCircle, Ban } from 'lucide-react';
 
 interface StatusBadgeProps {

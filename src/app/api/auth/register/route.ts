@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma';
 import { hashPassword, signToken, setAuthCookie, getDashboardRouteForRole } from '@/lib/auth';
 import { registerSchema } from '@/lib/validations';
 import { sendWelcomeEmail } from '@/lib/email/email-service';
-import { Role } from '@prisma/client';
+import { Role } from '@/types/database';
 
 export async function POST(req: NextRequest) {
   try {

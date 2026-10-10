@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { PaymentMethod } from '@prisma/client';
+import { PaymentMethod } from '@/types/database';
 import PaymentQrCode from '@/components/PaymentQrCode';
 import {
   Clock,

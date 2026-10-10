@@ -17,5 +17,5 @@ export default async function AdminSlotsPage() {
     orderBy: { name: 'asc' },
   });
 
-  return <AdminSlotsClient initialSlots={slots as any} canteens={canteens} />;
+  return <AdminSlotsClient initialSlots={slots as any} canteens={canteens as any} />;
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getDashboardRouteForRole, getSafeRedirectUrl } from '../src/lib/auth';
-import { Role } from '@prisma/client';
+import { Role } from '../src/types/database';
 
 describe('Role-Based Dashboard Redirection & Open Redirect Protection', () => {
   it('maps each authenticated role to its strict dashboard destination', () => {

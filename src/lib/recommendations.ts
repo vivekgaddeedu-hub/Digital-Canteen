@@ -5,7 +5,7 @@ export interface PersonalizedPromotion {
   title: string;
   subtitle: string | null;
   description: string;
-  imageUrl: string;
+  imageUrl: string | null;
   discountType: string;
   discountValue: number;
   maxDiscount: number | null;
@@ -61,19 +61,19 @@ export async function getPersonalizedPromotions(
     return activePromotions.map((p) => ({
       id: p.id,
       title: p.title,
-      subtitle: p.subtitle,
+      subtitle: p.subtitle || null,
       description: p.description,
-      imageUrl: p.imageUrl,
+      imageUrl: p.imageUrl || null,
       discountType: p.discountType,
       discountValue: Number(p.discountValue),
       maxDiscount: p.maxDiscount ? Number(p.maxDiscount) : null,
-      minOrderValue: Number(p.minOrderValue),
-      promoCode: p.promoCode,
-      badge: p.badge,
-      canteenId: p.canteenId,
+      minOrderValue: Number(p.minOrderValue || 0),
+      promoCode: p.promoCode || null,
+      badge: p.badge || null,
+      canteenId: p.canteenId || null,
       canteenName: p.canteen?.name || null,
       canteenSlug: p.canteen?.slug || null,
-      targetCategoryId: p.targetCategoryId,
+      targetCategoryId: p.targetCategoryId || null,
       priority: p.priority,
       startDate: p.startDate,
       endDate: p.endDate,
@@ -107,7 +107,7 @@ export async function getPersonalizedPromotions(
   let totalItemsCount = 0;
 
   for (const ord of pastOrders) {
-    for (const item of ord.items) {
+    for (const item of (ord.items || [])) {
       if (item.menuItem?.categoryId) {
         favoriteCategories.add(item.menuItem.categoryId);
       }
@@ -157,19 +157,19 @@ export async function getPersonalizedPromotions(
   return scored.map(({ promo, isMatch }) => ({
     id: promo.id,
     title: promo.title,
-    subtitle: promo.subtitle,
+    subtitle: promo.subtitle || null,
     description: promo.description,
-    imageUrl: promo.imageUrl,
+    imageUrl: promo.imageUrl || null,
     discountType: promo.discountType,
     discountValue: Number(promo.discountValue),
     maxDiscount: promo.maxDiscount ? Number(promo.maxDiscount) : null,
-    minOrderValue: Number(promo.minOrderValue),
-    promoCode: promo.promoCode,
-    badge: promo.badge,
-    canteenId: promo.canteenId,
+    minOrderValue: Number(promo.minOrderValue || 0),
+    promoCode: promo.promoCode || null,
+    badge: promo.badge || null,
+    canteenId: promo.canteenId || null,
     canteenName: promo.canteen?.name || null,
     canteenSlug: promo.canteen?.slug || null,
-    targetCategoryId: promo.targetCategoryId,
+    targetCategoryId: promo.targetCategoryId || null,
     priority: promo.priority,
     startDate: promo.startDate,
     endDate: promo.endDate,
