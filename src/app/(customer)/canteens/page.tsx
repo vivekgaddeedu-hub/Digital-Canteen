@@ -5,24 +5,41 @@ import prisma from '@/lib/prisma';
 import { MapPin, Clock, ArrowRight, Utensils, Sparkles } from 'lucide-react';
 import { PromotionalCarousel } from '@/components/PromotionalCarousel';
 
-export const revalidate = 30;
+export const dynamic = 'force-dynamic';
 
 export default async function CanteensPage() {
-  const canteens = await prisma.canteen.findMany({
-    where: { isActive: true },
-    include: {
-      categories: {
-        select: { name: true },
-        take: 3,
-      },
-      _count: {
-        select: {
-          menuItems: { where: { isAvailable: true } },
+  let canteens: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    location: string;
+    description: string | null;
+    imageUrl: string | null;
+    openingTime: string;
+    closingTime: string;
+    categories: { name: string }[];
+    _count: { menuItems: number };
+  }> = [];
+
+  try {
+    canteens = await prisma.canteen.findMany({
+      where: { isActive: true },
+      include: {
+        categories: {
+          select: { name: true },
+          take: 3,
+        },
+        _count: {
+          select: {
+            menuItems: { where: { isAvailable: true } },
+          },
         },
       },
-    },
-    orderBy: { name: 'asc' },
-  });
+      orderBy: { name: 'asc' },
+    });
+  } catch (err) {
+    console.warn('CanteensPage: Database unavailable during build or query:', err);
+  }
 
   return (
     <div className="space-y-8">

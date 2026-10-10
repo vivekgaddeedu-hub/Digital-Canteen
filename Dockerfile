@@ -22,11 +22,14 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma Client
+ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/quickbite?schema=public"
+ENV JWT_SECRET="build_jwt_secret_placeholder_for_nextjs_build"
 RUN npx prisma generate
 
 # Build Next.js application in standalone mode
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+RUN mkdir -p public
 RUN npm run build
 
 # -------------------------------------------------------------

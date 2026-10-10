@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import CanteenMenuClient from './CanteenMenuClient';
 
-export const revalidate = 10; // Fresh menu items every 10s
+export const dynamic = 'force-dynamic';
 
 export default async function CanteenMenuPage({
   params,
