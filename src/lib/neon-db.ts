@@ -33,7 +33,10 @@ function getDatabaseUrl(): string {
 
 // Neon query executor
 export function getSql(): ((query: string, params?: any[]) => Promise<any[]>) {
-  return neon(getDatabaseUrl()) as any;
+  const client = neon(getDatabaseUrl());
+  return async (query: string, params?: any[]) => {
+    return (await client.query(query, params || [])) as any[];
+  };
 }
 
 function parseRow(row: any, tableName: string) {
@@ -623,11 +626,12 @@ export const neonClient: NeonClient = {
   },
 
   async $queryRaw(strings: TemplateStringsArray | string, ...values: any[]) {
-    const sql = getSql();
+    const client = neon(getDatabaseUrl());
     if (typeof strings === 'string') {
-      return await sql(strings, values);
+      const params = values.length === 1 && Array.isArray(values[0]) ? [values[0]] : values;
+      return (await client.query(strings, params)) as any[];
     }
-    return await (sql as any)(strings, ...values);
+    return (await client(strings, ...values)) as any[];
   },
 
   async $disconnect() {
