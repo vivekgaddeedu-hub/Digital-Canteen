@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Local Postgres data & env
+.pg-env/
+.pg-data/
+
+# Next.js build output
+.next/
+out/
+
+# Production
+build/
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# OS files
+.DS_Store
+*.pem

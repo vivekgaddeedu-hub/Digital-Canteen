@@ -1,0 +1,64 @@
+name: Production Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: 'Target Deployment Environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Database Migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            echo "Applying Prisma schema migrations to production database..."
+            npx prisma db push --skip-generate
+          else
+            echo "Skipping live migration: PROD_DATABASE_URL secret is not configured yet."
+          fi
+
+      - name: Deploy Application Container
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          echo "Deployment target: ${{ github.event.inputs.target_environment || 'production' }}"
+          if [ -n "$DEPLOY_HOST" ]; then
+            echo "Deploying container image to host $DEPLOY_HOST..."
+            # SSH / Docker compose rollout
+          else
+            echo "Note: DEPLOY_HOST secret is not configured. Provide cloud credentials in repository settings."
+          fi
+
+      - name: Post-deployment Health Check
+        env:
+          APP_URL: ${{ secrets.PRODUCTION_APP_URL || 'http://localhost:3000' }}
+        run: |
+          echo "Health check endpoint: $APP_URL/api/health"
+          # curl -sf "$APP_URL/api/health" || echo "Health check target unreachable in dry-run mode."

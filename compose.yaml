@@ -1,0 +1,100 @@
+# QUICKBITE V2 - Production Docker Compose Configuration
+#
+# Standard Single-Host Deployment:
+#   docker compose up -d
+#
+# Horizontal Scaling Note:
+#   To run multiple application replicas:
+#     docker compose up --scale app=3 -d
+#   When scaling, the 'ports: "3000:3000"' binding must either use a range
+#   or traffic must route through a reverse proxy (e.g. Nginx, Traefik, AWS ALB).
+#   The application is fully stateless (sessions stored in JWT HttpOnly cookies,
+#   database state persisted in PostgreSQL).
+
+services:
+  # -----------------------------------------------------------
+  # Database Service (PostgreSQL 16)
+  # -----------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: quickbite-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quickbite_secure_production_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-quickbite}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - quickbite-network
+    # Internal port only - DO NOT publish 5432 to public internet in production
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-quickbite}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # -----------------------------------------------------------
+  # Application Service (Next.js Standalone)
+  # -----------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quickbite-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-quickbite_secure_production_pass_2026}@postgres:5432/${POSTGRES_DB:-quickbite}?schema=public"
+      JWT_SECRET: ${JWT_SECRET:-quickbite_production_secret_key_change_me_in_env_file_2026}
+      
+      # Nodemailer SMTP Configuration
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-notifications@quickbite.campus.edu}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-QUICKBITE Campus Canteen}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - quickbite-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1536M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+volumes:
+  postgres_data:
+    name: quickbite_postgres_data
+
+networks:
+  quickbite-network:
+    name: quickbite-network
+    driver: bridge

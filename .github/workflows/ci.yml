@@ -1,0 +1,76 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Lint, Test & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: quickbite_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: "postgresql://testuser:testpassword@localhost:5432/quickbite_test?schema=public"
+      JWT_SECRET: "ci_test_super_secure_jwt_token_secret_2026_antigravity"
+      SMTP_HOST: "localhost"
+      SMTP_PORT: 587
+      SMTP_SECURE: "false"
+      SMTP_FROM_EMAIL: "ci-notifications@quickbite.campus.edu"
+      SMTP_FROM_NAME: "QUICKBITE CI"
+      APP_BASE_URL: "http://localhost:3000"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies (clean install)
+        run: npm ci
+
+      - name: Run Prisma Client generation
+        run: npx prisma generate
+
+      - name: Verify Database Schema Sync
+        run: npx prisma db push --skip-generate
+
+      - name: Run TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Vitest automated test suite
+        run: npm test
+
+      - name: Build Next.js production bundle
+        run: npm run build
+        env:
+          NODE_ENV: production
