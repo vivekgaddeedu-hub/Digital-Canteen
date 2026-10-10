@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { PromotionalCarousel } from '@/components/PromotionalCarousel';
 import {
@@ -258,10 +259,12 @@ export default function CustomerDashboardPage() {
             >
               <div className="relative h-44 w-full bg-stone-100 overflow-hidden">
                 {canteen.imageUrl ? (
-                  <img
+                  <Image
                     src={canteen.imageUrl}
                     alt={canteen.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                    fill
+                    unoptimized
+                    className="object-cover group-hover:scale-105 transition duration-500"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-stone-400">

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import QRCode from 'qrcode';
 import {
   QrCode as QrIcon,
@@ -210,9 +211,12 @@ export default function PaymentQrCode({
           {viewMode === 'dynamic' ? (
             qrDataUrl ? (
               <div className="flex flex-col items-center">
-                <img
+                <Image
                   src={qrDataUrl}
                   alt={`Pre-filled UPI QR code for order ${orderNumber}`}
+                  width={192}
+                  height={192}
+                  unoptimized
                   className="w-48 h-48 object-contain rounded-lg shadow-2xs"
                 />
                 <span className="text-[10px] text-slate-500 mt-1 font-mono">
@@ -231,9 +235,12 @@ export default function PaymentQrCode({
             )
           ) : (
             <div className="flex flex-col items-center">
-              <img
+              <Image
                 src={effectiveQrImage}
                 alt="Santosh Reddy Official Google Pay UPI QR"
+                width={192}
+                height={220}
+                unoptimized
                 className="w-48 h-auto max-h-56 object-contain rounded-lg shadow-2xs border border-slate-200"
               />
               <span className="text-[10px] text-slate-500 mt-1">

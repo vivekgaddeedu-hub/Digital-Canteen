@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Tag,
   Plus,
@@ -260,9 +261,12 @@ export default function AdminPromotionsPage() {
                   <tr key={p.id} className="hover:bg-stone-50/60 transition">
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <img
+                        <Image
                           src={p.imageUrl}
                           alt={p.title}
+                          width={48}
+                          height={40}
+                          unoptimized
                           className="w-12 h-10 object-cover rounded-lg shrink-0 border border-stone-200"
                         />
                         <div className="max-w-xs">
