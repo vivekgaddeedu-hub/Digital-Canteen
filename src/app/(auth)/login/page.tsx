@@ -44,10 +44,29 @@ function LoginForm() {
     }
   };
 
-  const setCredentials = (e: string, p: string) => {
+  const handleQuickLogin = async (e: string, p: string) => {
     setEmail(e);
     setPassword(p);
     setErrorMsg('');
+    setLoading(true);
+
+    const res = await login(e, p, redirectParam);
+    setLoading(false);
+
+    if (res.success && res.user) {
+      toast(`Welcome back, ${res.user.name}!`, 'success');
+      
+      const destination = res.redirectUrl || (
+        res.user.role === Role.ADMIN
+          ? '/admin/dashboard'
+          : res.user.role === Role.STAFF
+          ? '/staff/dashboard'
+          : '/customer/dashboard'
+      );
+      router.push(destination);
+    } else {
+      setErrorMsg(res.error || 'Invalid credentials');
+    }
   };
 
   return (
@@ -136,53 +155,57 @@ function LoginForm() {
       {/* Development Quick-Fill Accounts */}
       <div className="bg-stone-100/80 rounded-2xl border border-stone-200 p-4 space-y-2.5">
         <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500 text-center">
-          Development Test Accounts (1-Click Fill)
+          Development Test Accounts (1-Click Instant Sign In)
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           <button
             type="button"
-            onClick={() => setCredentials('customer@quickbite.local', 'Customer123!')}
-            className="p-2 rounded-lg bg-white border border-stone-200 hover:border-brand-400 text-left transition flex items-center gap-2 group"
+            disabled={loading}
+            onClick={() => handleQuickLogin('customer@quickbite.local', 'Customer123!')}
+            className="p-2.5 rounded-xl bg-white border border-stone-200 hover:border-brand-500 hover:bg-brand-50/50 text-left transition flex items-center gap-2 group disabled:opacity-60"
           >
             <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             <div className="truncate">
-              <p className="font-bold text-stone-800">Customer</p>
+              <p className="font-bold text-stone-800 group-hover:text-brand-700">Customer</p>
               <p className="text-[10px] text-stone-500 truncate">customer@quickbite.local</p>
             </div>
           </button>
 
           <button
             type="button"
-            onClick={() => setCredentials('staff@quickbite.local', 'Staff123!')}
-            className="p-2 rounded-lg bg-white border border-stone-200 hover:border-brand-400 text-left transition flex items-center gap-2 group"
+            disabled={loading}
+            onClick={() => handleQuickLogin('staff@quickbite.local', 'Staff123!')}
+            className="p-2.5 rounded-xl bg-white border border-stone-200 hover:border-brand-500 hover:bg-brand-50/50 text-left transition flex items-center gap-2 group disabled:opacity-60"
           >
             <ChefHat className="w-4 h-4 text-amber-600 shrink-0" />
             <div className="truncate">
-              <p className="font-bold text-stone-800">Staff (Central)</p>
+              <p className="font-bold text-stone-800 group-hover:text-brand-700">Staff (Central)</p>
               <p className="text-[10px] text-stone-500 truncate">staff@quickbite.local</p>
             </div>
           </button>
 
           <button
             type="button"
-            onClick={() => setCredentials('staff2@quickbite.local', 'Staff123!')}
-            className="p-2 rounded-lg bg-white border border-stone-200 hover:border-brand-400 text-left transition flex items-center gap-2 group"
+            disabled={loading}
+            onClick={() => handleQuickLogin('staff2@quickbite.local', 'Staff123!')}
+            className="p-2.5 rounded-xl bg-white border border-stone-200 hover:border-brand-500 hover:bg-brand-50/50 text-left transition flex items-center gap-2 group disabled:opacity-60"
           >
             <ChefHat className="w-4 h-4 text-blue-600 shrink-0" />
             <div className="truncate">
-              <p className="font-bold text-stone-800">Staff (Engg Hub)</p>
+              <p className="font-bold text-stone-800 group-hover:text-brand-700">Staff (Engg Hub)</p>
               <p className="text-[10px] text-stone-500 truncate">staff2@quickbite.local</p>
             </div>
           </button>
 
           <button
             type="button"
-            onClick={() => setCredentials('admin@quickbite.local', 'Admin123!')}
-            className="p-2 rounded-lg bg-white border border-stone-200 hover:border-brand-400 text-left transition flex items-center gap-2 group"
+            disabled={loading}
+            onClick={() => handleQuickLogin('admin@quickbite.local', 'Admin123!')}
+            className="p-2.5 rounded-xl bg-white border border-stone-200 hover:border-brand-500 hover:bg-brand-50/50 text-left transition flex items-center gap-2 group disabled:opacity-60"
           >
             <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
             <div className="truncate">
-              <p className="font-bold text-stone-800">Admin Console</p>
+              <p className="font-bold text-stone-800 group-hover:text-brand-700">Admin Console</p>
               <p className="text-[10px] text-stone-500 truncate">admin@quickbite.local</p>
             </div>
           </button>
