@@ -6,7 +6,7 @@ import { Role } from '@/types/database';
 
 let cachedActiveCanteens: { data: any; expiry: number } | null = null;
 
-export function invalidateCanteensCache() {
+function invalidateCanteensCache() {
   cachedActiveCanteens = null;
 }
 

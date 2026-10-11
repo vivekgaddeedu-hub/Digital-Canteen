@@ -6,7 +6,7 @@ import { Role } from '@/types/database';
 
 const menuCache = new Map<string, { data: any; expiry: number }>();
 
-export function invalidateMenuCache() {
+function invalidateMenuCache() {
   menuCache.clear();
 }
 

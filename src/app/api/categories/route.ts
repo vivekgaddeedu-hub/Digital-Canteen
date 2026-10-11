@@ -5,7 +5,7 @@ import { Role } from '@/types/database';
 
 const categoryCache = new Map<string, { data: any; expiry: number }>();
 
-export function invalidateCategoryCache(canteenId?: string) {
+function invalidateCategoryCache(canteenId?: string) {
   if (canteenId) categoryCache.delete(canteenId);
   else categoryCache.clear();
 }
