@@ -4,10 +4,23 @@ import { requireAuth } from '@/lib/auth';
 import { canteenSchema } from '@/lib/validations';
 import { Role } from '@/types/database';
 
+let cachedActiveCanteens: { data: any; expiry: number } | null = null;
+
+export function invalidateCanteensCache() {
+  cachedActiveCanteens = null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const includeInactive = searchParams.get('includeInactive') === 'true';
+
+    if (!includeInactive && cachedActiveCanteens && Date.now() < cachedActiveCanteens.expiry) {
+      return NextResponse.json(
+        { canteens: cachedActiveCanteens.data },
+        { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=45' } }
+      );
+    }
 
     const canteens = await prisma.canteen.findMany({
       where: includeInactive ? {} : { isActive: true },
@@ -22,7 +35,14 @@ export async function GET(req: NextRequest) {
       orderBy: { name: 'asc' },
     });
 
-    return NextResponse.json({ canteens });
+    if (!includeInactive) {
+      cachedActiveCanteens = { data: canteens, expiry: Date.now() + 15000 };
+    }
+
+    return NextResponse.json(
+      { canteens },
+      { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=45' } }
+    );
   } catch (error) {
     console.error('Fetch canteens error:', error);
     return NextResponse.json({ error: 'Failed to fetch canteens' }, { status: 500 });
@@ -74,6 +94,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    invalidateCanteensCache();
     return NextResponse.json({ canteen }, { status: 201 });
   } catch (error) {
     console.error('Create canteen error:', error);

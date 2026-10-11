@@ -4,6 +4,12 @@ import { requireAuth } from '@/lib/auth';
 import { menuItemSchema } from '@/lib/validations';
 import { Role } from '@/types/database';
 
+const menuCache = new Map<string, { data: any; expiry: number }>();
+
+export function invalidateMenuCache() {
+  menuCache.clear();
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -12,6 +18,17 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search');
     const isVeg = searchParams.get('isVeg');
     const availableOnly = searchParams.get('availableOnly') !== 'false';
+
+    const cacheKey = !search ? `${canteenId || 'all'}:${categoryId || 'all'}:${isVeg || 'all'}:${availableOnly}` : null;
+    if (cacheKey) {
+      const cached = menuCache.get(cacheKey);
+      if (cached && Date.now() < cached.expiry) {
+        return NextResponse.json(
+          { items: cached.data },
+          { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=45' } }
+        );
+      }
+    }
 
     const where: any = {};
     if (canteenId) where.canteenId = canteenId;
@@ -39,7 +56,14 @@ export async function GET(req: NextRequest) {
       orderBy: [{ categoryId: 'asc' }, { name: 'asc' }],
     });
 
-    return NextResponse.json({ items });
+    if (cacheKey) {
+      menuCache.set(cacheKey, { data: items, expiry: Date.now() + 15000 });
+    }
+
+    return NextResponse.json(
+      { items },
+      { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=45' } }
+    );
   } catch (error) {
     console.error('Fetch menu items error:', error);
     return NextResponse.json({ error: 'Failed to fetch menu items' }, { status: 500 });

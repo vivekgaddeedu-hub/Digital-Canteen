@@ -31,12 +31,17 @@ function getDatabaseUrl(): string {
   return url;
 }
 
-// Neon query executor
+let globalSql: ((query: string, params?: any[]) => Promise<any[]>) | null = null;
+
+// Neon query executor with connection reuse
 export function getSql(): ((query: string, params?: any[]) => Promise<any[]>) {
-  const client = neon(getDatabaseUrl());
-  return async (query: string, params?: any[]) => {
-    return (await client.query(query, params || [])) as any[];
-  };
+  if (!globalSql) {
+    const client = neon(getDatabaseUrl());
+    globalSql = async (query: string, params?: any[]) => {
+      return (await client.query(query, params || [])) as any[];
+    };
+  }
+  return globalSql;
 }
 
 function parseRow(row: any, tableName: string) {
@@ -194,60 +199,83 @@ async function attachRelations(tableName: string, rows: any[], include?: Record<
     const customerIds = Array.from(new Set(rows.map((r) => r.customerId).filter(Boolean)));
     const pickupSlotIds = Array.from(new Set(rows.map((r) => r.pickupSlotId).filter(Boolean)));
 
+    const tasks: Promise<void>[] = [];
+
     if (include.canteen && canteenIds.length > 0) {
-      const canteens = await sql('SELECT * FROM "Canteen" WHERE "id" = ANY($1)', [canteenIds]);
-      const canteenMap = new Map(canteens.map((c) => [c.id, parseRow(c, 'Canteen')]));
-      rows.forEach((r) => (r.canteen = canteenMap.get(r.canteenId) || null));
+      tasks.push(
+        sql('SELECT * FROM "Canteen" WHERE "id" = ANY($1)', [canteenIds]).then((canteens) => {
+          const canteenMap = new Map(canteens.map((c) => [c.id, parseRow(c, 'Canteen')]));
+          rows.forEach((r) => (r.canteen = canteenMap.get(r.canteenId) || null));
+        })
+      );
     }
 
     if (include.customer && customerIds.length > 0) {
-      const customers = await sql('SELECT * FROM "User" WHERE "id" = ANY($1)', [customerIds]);
-      const custMap = new Map(customers.map((u) => [u.id, parseRow(u, 'User')]));
-      rows.forEach((r) => (r.customer = custMap.get(r.customerId) || null));
+      tasks.push(
+        sql('SELECT * FROM "User" WHERE "id" = ANY($1)', [customerIds]).then((customers) => {
+          const custMap = new Map(customers.map((u) => [u.id, parseRow(u, 'User')]));
+          rows.forEach((r) => (r.customer = custMap.get(r.customerId) || null));
+        })
+      );
     }
 
     if (include.pickupSlot && pickupSlotIds.length > 0) {
-      const slots = await sql('SELECT * FROM "PickupSlot" WHERE "id" = ANY($1)', [pickupSlotIds]);
-      const slotMap = new Map(slots.map((s) => [s.id, parseRow(s, 'PickupSlot')]));
-      rows.forEach((r) => (r.pickupSlot = slotMap.get(r.pickupSlotId) || null));
+      tasks.push(
+        sql('SELECT * FROM "PickupSlot" WHERE "id" = ANY($1)', [pickupSlotIds]).then((slots) => {
+          const slotMap = new Map(slots.map((s) => [s.id, parseRow(s, 'PickupSlot')]));
+          rows.forEach((r) => (r.pickupSlot = slotMap.get(r.pickupSlotId) || null));
+        })
+      );
     }
 
     if (include.payment) {
-      const payments = await sql('SELECT * FROM "Payment" WHERE "orderId" = ANY($1)', [orderIds]);
-      const payMap = new Map(payments.map((p) => [p.orderId, parseRow(p, 'Payment')]));
-      rows.forEach((r) => (r.payment = payMap.get(r.id) || null));
+      tasks.push(
+        sql('SELECT * FROM "Payment" WHERE "orderId" = ANY($1)', [orderIds]).then((payments) => {
+          const payMap = new Map(payments.map((p) => [p.orderId, parseRow(p, 'Payment')]));
+          rows.forEach((r) => (r.payment = payMap.get(r.id) || null));
+        })
+      );
     }
 
     if (include.statusHistory) {
-      const histories = await sql('SELECT * FROM "OrderStatusHistory" WHERE "orderId" = ANY($1) ORDER BY "createdAt" ASC', [orderIds]);
-      const histMap = new Map<string, any[]>();
-      histories.forEach((h) => {
-        if (!histMap.has(h.orderId)) histMap.set(h.orderId, []);
-        histMap.get(h.orderId)!.push(parseRow(h, 'OrderStatusHistory'));
-      });
-      rows.forEach((r) => (r.statusHistory = histMap.get(r.id) || []));
+      tasks.push(
+        sql('SELECT * FROM "OrderStatusHistory" WHERE "orderId" = ANY($1) ORDER BY "createdAt" ASC', [orderIds]).then((histories) => {
+          const histMap = new Map<string, any[]>();
+          histories.forEach((h) => {
+            if (!histMap.has(h.orderId)) histMap.set(h.orderId, []);
+            histMap.get(h.orderId)!.push(parseRow(h, 'OrderStatusHistory'));
+          });
+          rows.forEach((r) => (r.statusHistory = histMap.get(r.id) || []));
+        })
+      );
     }
 
     if (include.items) {
-      const items = await sql('SELECT * FROM "OrderItem" WHERE "orderId" = ANY($1)', [orderIds]);
-      const parsedItems = items.map((i) => parseRow(i, 'OrderItem'));
+      tasks.push(
+        (async () => {
+          const items = await sql('SELECT * FROM "OrderItem" WHERE "orderId" = ANY($1)', [orderIds]);
+          const parsedItems = items.map((i) => parseRow(i, 'OrderItem'));
 
-      if (typeof include.items === 'object' && include.items.include?.menuItem) {
-        const menuItemIds = Array.from(new Set(parsedItems.map((i) => i.menuItemId).filter(Boolean)));
-        if (menuItemIds.length > 0) {
-          const menuItems = await sql('SELECT * FROM "MenuItem" WHERE "id" = ANY($1)', [menuItemIds]);
-          const menuMap = new Map(menuItems.map((m) => [m.id, parseRow(m, 'MenuItem')]));
-          parsedItems.forEach((i) => (i.menuItem = menuMap.get(i.menuItemId) || null));
-        }
-      }
+          if (typeof include.items === 'object' && include.items.include?.menuItem) {
+            const menuItemIds = Array.from(new Set(parsedItems.map((i) => i.menuItemId).filter(Boolean)));
+            if (menuItemIds.length > 0) {
+              const menuItems = await sql('SELECT * FROM "MenuItem" WHERE "id" = ANY($1)', [menuItemIds]);
+              const menuMap = new Map(menuItems.map((m) => [m.id, parseRow(m, 'MenuItem')]));
+              parsedItems.forEach((i) => (i.menuItem = menuMap.get(i.menuItemId) || null));
+            }
+          }
 
-      const itemMap = new Map<string, any[]>();
-      parsedItems.forEach((i) => {
-        if (!itemMap.has(i.orderId)) itemMap.set(i.orderId, []);
-        itemMap.get(i.orderId)!.push(i);
-      });
-      rows.forEach((r) => (r.items = itemMap.get(r.id) || []));
+          const itemMap = new Map<string, any[]>();
+          parsedItems.forEach((i) => {
+            if (!itemMap.has(i.orderId)) itemMap.set(i.orderId, []);
+            itemMap.get(i.orderId)!.push(i);
+          });
+          rows.forEach((r) => (r.items = itemMap.get(r.id) || []));
+        })()
+      );
     }
+
+    await Promise.all(tasks);
   }
 
   if (tableName === 'MenuItem') {
@@ -255,95 +283,131 @@ async function attachRelations(tableName: string, rows: any[], include?: Record<
     const canteenIds = Array.from(new Set(rows.map((r) => r.canteenId).filter(Boolean)));
     const categoryIds = Array.from(new Set(rows.map((r) => r.categoryId).filter(Boolean)));
 
+    const tasks: Promise<void>[] = [];
+
     if (include.canteen && canteenIds.length > 0) {
-      const canteens = await sql('SELECT * FROM "Canteen" WHERE "id" = ANY($1)', [canteenIds]);
-      const canteenMap = new Map(canteens.map((c) => [c.id, parseRow(c, 'Canteen')]));
-      rows.forEach((r) => (r.canteen = canteenMap.get(r.canteenId) || null));
+      tasks.push(
+        sql('SELECT * FROM "Canteen" WHERE "id" = ANY($1)', [canteenIds]).then((canteens) => {
+          const canteenMap = new Map(canteens.map((c) => [c.id, parseRow(c, 'Canteen')]));
+          rows.forEach((r) => (r.canteen = canteenMap.get(r.canteenId) || null));
+        })
+      );
     }
 
     if (include.category && categoryIds.length > 0) {
-      const categories = await sql('SELECT * FROM "Category" WHERE "id" = ANY($1)', [categoryIds]);
-      const catMap = new Map(categories.map((c) => [c.id, parseRow(c, 'Category')]));
-      rows.forEach((r) => (r.category = catMap.get(r.categoryId) || null));
+      tasks.push(
+        sql('SELECT * FROM "Category" WHERE "id" = ANY($1)', [categoryIds]).then((categories) => {
+          const catMap = new Map(categories.map((c) => [c.id, parseRow(c, 'Category')]));
+          rows.forEach((r) => (r.category = catMap.get(r.categoryId) || null));
+        })
+      );
     }
 
     if (include.inventory) {
-      const inventories = await sql('SELECT * FROM "InventoryRecord" WHERE "menuItemId" = ANY($1)', [itemIds]);
-      const invMap = new Map(inventories.map((i) => [i.menuItemId, parseRow(i, 'InventoryRecord')]));
-      rows.forEach((r) => (r.inventory = invMap.get(r.id) || null));
+      tasks.push(
+        sql('SELECT * FROM "InventoryRecord" WHERE "menuItemId" = ANY($1)', [itemIds]).then((inventories) => {
+          const invMap = new Map(inventories.map((i) => [i.menuItemId, parseRow(i, 'InventoryRecord')]));
+          rows.forEach((r) => (r.inventory = invMap.get(r.id) || null));
+        })
+      );
     }
+
+    await Promise.all(tasks);
   }
 
   if (tableName === 'Canteen') {
     const canteenIds = rows.map((r) => r.id);
+    const tasks: Promise<void>[] = [];
 
     if (include.categories) {
-      const categories = await sql('SELECT * FROM "Category" WHERE "canteenId" = ANY($1) ORDER BY "sortOrder" ASC', [canteenIds]);
-      const parsedCategories = categories.map((c) => parseRow(c, 'Category'));
+      tasks.push(
+        (async () => {
+          const categories = await sql('SELECT * FROM "Category" WHERE "canteenId" = ANY($1) ORDER BY "sortOrder" ASC', [canteenIds]);
+          const parsedCategories = categories.map((c) => parseRow(c, 'Category'));
 
-      if (typeof include.categories === 'object' && include.categories.include?.menuItems) {
-        const catIds = parsedCategories.map((c) => c.id);
-        if (catIds.length > 0) {
-          const menuItems = await sql('SELECT * FROM "MenuItem" WHERE "categoryId" = ANY($1) AND "isAvailable" = true', [catIds]);
-          const parsedItems = menuItems.map((m) => parseRow(m, 'MenuItem'));
-          if (include.categories.include.menuItems.include?.inventory) {
-            const itemIds = parsedItems.map((i) => i.id);
-            if (itemIds.length > 0) {
-              const inventories = await sql('SELECT * FROM "InventoryRecord" WHERE "menuItemId" = ANY($1)', [itemIds]);
-              const invMap = new Map(inventories.map((i) => [i.menuItemId, parseRow(i, 'InventoryRecord')]));
-              parsedItems.forEach((i) => (i.inventory = invMap.get(i.id) || null));
+          if (typeof include.categories === 'object' && include.categories.include?.menuItems) {
+            const catIds = parsedCategories.map((c) => c.id);
+            if (catIds.length > 0) {
+              const menuItems = await sql('SELECT * FROM "MenuItem" WHERE "categoryId" = ANY($1) AND "isAvailable" = true', [catIds]);
+              const parsedItems = menuItems.map((m) => parseRow(m, 'MenuItem'));
+              if (include.categories.include.menuItems.include?.inventory) {
+                const itemIds = parsedItems.map((i) => i.id);
+                if (itemIds.length > 0) {
+                  const inventories = await sql('SELECT * FROM "InventoryRecord" WHERE "menuItemId" = ANY($1)', [itemIds]);
+                  const invMap = new Map(inventories.map((i) => [i.menuItemId, parseRow(i, 'InventoryRecord')]));
+                  parsedItems.forEach((i) => (i.inventory = invMap.get(i.id) || null));
+                }
+              }
+              const itemMap = new Map<string, any[]>();
+              parsedItems.forEach((i) => {
+                if (!itemMap.has(i.categoryId)) itemMap.set(i.categoryId, []);
+                itemMap.get(i.categoryId)!.push(i);
+              });
+              parsedCategories.forEach((c) => (c.menuItems = itemMap.get(c.id) || []));
             }
           }
-          const itemMap = new Map<string, any[]>();
-          parsedItems.forEach((i) => {
-            if (!itemMap.has(i.categoryId)) itemMap.set(i.categoryId, []);
-            itemMap.get(i.categoryId)!.push(i);
-          });
-          parsedCategories.forEach((c) => (c.menuItems = itemMap.get(c.id) || []));
-        }
-      }
 
-      const catMap = new Map<string, any[]>();
-      parsedCategories.forEach((c) => {
-        if (!catMap.has(c.canteenId)) catMap.set(c.canteenId, []);
-        catMap.get(c.canteenId)!.push(c);
-      });
-      rows.forEach((r) => (r.categories = catMap.get(r.id) || []));
+          const catMap = new Map<string, any[]>();
+          parsedCategories.forEach((c) => {
+            if (!catMap.has(c.canteenId)) catMap.set(c.canteenId, []);
+            catMap.get(c.canteenId)!.push(c);
+          });
+          rows.forEach((r) => (r.categories = catMap.get(r.id) || []));
+        })()
+      );
     }
 
     if (include.pickupSlots) {
-      const slots = await sql('SELECT * FROM "PickupSlot" WHERE "canteenId" = ANY($1) AND "isActive" = true ORDER BY "startTime" ASC', [canteenIds]);
-      const slotMap = new Map<string, any[]>();
-      slots.forEach((s) => {
-        if (!slotMap.has(s.canteenId)) slotMap.set(s.canteenId, []);
-        slotMap.get(s.canteenId)!.push(parseRow(s, 'PickupSlot'));
-      });
-      rows.forEach((r) => (r.pickupSlots = slotMap.get(r.id) || []));
+      tasks.push(
+        sql('SELECT * FROM "PickupSlot" WHERE "canteenId" = ANY($1) AND "isActive" = true ORDER BY "startTime" ASC', [canteenIds]).then((slots) => {
+          const slotMap = new Map<string, any[]>();
+          slots.forEach((s) => {
+            if (!slotMap.has(s.canteenId)) slotMap.set(s.canteenId, []);
+            slotMap.get(s.canteenId)!.push(parseRow(s, 'PickupSlot'));
+          });
+          rows.forEach((r) => (r.pickupSlots = slotMap.get(r.id) || []));
+        })
+      );
     }
 
     if (include._count) {
-      const counts = await sql('SELECT "canteenId", COUNT(*)::int as count FROM "MenuItem" WHERE "canteenId" = ANY($1) GROUP BY "canteenId"', [canteenIds]);
-      const countMap = new Map(counts.map((c) => [c.canteenId, c.count]));
-      rows.forEach((r) => (r._count = { menuItems: countMap.get(r.id) || 0 }));
+      tasks.push(
+        sql('SELECT "canteenId", COUNT(*)::int as count FROM "MenuItem" WHERE "canteenId" = ANY($1) GROUP BY "canteenId"', [canteenIds]).then((counts) => {
+          const countMap = new Map(counts.map((c) => [c.canteenId, c.count]));
+          rows.forEach((r) => (r._count = { menuItems: countMap.get(r.id) || 0 }));
+        })
+      );
     }
+
+    await Promise.all(tasks);
   }
 
   if (tableName === 'Category') {
     const categoryIds = rows.map((r) => r.id);
+    const tasks: Promise<void>[] = [];
+
     if (include._count) {
-      const counts = await sql('SELECT "categoryId", COUNT(*)::int as count FROM "MenuItem" WHERE "categoryId" = ANY($1) GROUP BY "categoryId"', [categoryIds]);
-      const countMap = new Map(counts.map((c) => [c.categoryId, c.count]));
-      rows.forEach((r) => (r._count = { menuItems: countMap.get(r.id) || 0 }));
+      tasks.push(
+        sql('SELECT "categoryId", COUNT(*)::int as count FROM "MenuItem" WHERE "categoryId" = ANY($1) GROUP BY "categoryId"', [categoryIds]).then((counts) => {
+          const countMap = new Map(counts.map((c) => [c.categoryId, c.count]));
+          rows.forEach((r) => (r._count = { menuItems: countMap.get(r.id) || 0 }));
+        })
+      );
     }
     if (include.menuItems) {
-      const menuItems = await sql('SELECT * FROM "MenuItem" WHERE "categoryId" = ANY($1)', [categoryIds]);
-      const itemMap = new Map<string, any[]>();
-      menuItems.forEach((m) => {
-        if (!itemMap.has(m.categoryId)) itemMap.set(m.categoryId, []);
-        itemMap.get(m.categoryId)!.push(parseRow(m, 'MenuItem'));
-      });
-      rows.forEach((r) => (r.menuItems = itemMap.get(r.id) || []));
+      tasks.push(
+        sql('SELECT * FROM "MenuItem" WHERE "categoryId" = ANY($1)', [categoryIds]).then((menuItems) => {
+          const itemMap = new Map<string, any[]>();
+          menuItems.forEach((m) => {
+            if (!itemMap.has(m.categoryId)) itemMap.set(m.categoryId, []);
+            itemMap.get(m.categoryId)!.push(parseRow(m, 'MenuItem'));
+          });
+          rows.forEach((r) => (r.menuItems = itemMap.get(r.id) || []));
+        })
+      );
     }
+
+    await Promise.all(tasks);
   }
 
   if (tableName === 'User') {
@@ -379,17 +443,26 @@ async function attachRelations(tableName: string, rows: any[], include?: Record<
   if (tableName === 'StaffAssignment') {
     const canteenIds = Array.from(new Set(rows.map((r) => r.canteenId).filter(Boolean)));
     const userIds = Array.from(new Set(rows.map((r) => r.userId).filter(Boolean)));
+    const tasks: Promise<void>[] = [];
 
     if (include.canteen && canteenIds.length > 0) {
-      const canteens = await sql('SELECT * FROM "Canteen" WHERE "id" = ANY($1)', [canteenIds]);
-      const cMap = new Map(canteens.map((c) => [c.id, parseRow(c, 'Canteen')]));
-      rows.forEach((r) => (r.canteen = cMap.get(r.canteenId) || null));
+      tasks.push(
+        sql('SELECT * FROM "Canteen" WHERE "id" = ANY($1)', [canteenIds]).then((canteens) => {
+          const cMap = new Map(canteens.map((c) => [c.id, parseRow(c, 'Canteen')]));
+          rows.forEach((r) => (r.canteen = cMap.get(r.canteenId) || null));
+        })
+      );
     }
     if (include.user && userIds.length > 0) {
-      const users = await sql('SELECT * FROM "User" WHERE "id" = ANY($1)', [userIds]);
-      const uMap = new Map(users.map((u) => [u.id, parseRow(u, 'User')]));
-      rows.forEach((r) => (r.user = uMap.get(r.userId) || null));
+      tasks.push(
+        sql('SELECT * FROM "User" WHERE "id" = ANY($1)', [userIds]).then((users) => {
+          const uMap = new Map(users.map((u) => [u.id, parseRow(u, 'User')]));
+          rows.forEach((r) => (r.user = uMap.get(r.userId) || null));
+        })
+      );
     }
+
+    await Promise.all(tasks);
   }
 
   return rows;
@@ -453,6 +526,46 @@ function createModelHandler<T = any>(tableName: string) {
       // Generate UUID if id is missing
       if (!data.id) {
         data.id = crypto.randomUUID();
+      }
+
+      // Auto-set timestamps if missing
+      const now = new Date();
+      const tablesWithCreatedAt = [
+        'AuditLog',
+        'Canteen',
+        'Category',
+        'MenuItem',
+        'NotificationLog',
+        'Order',
+        'OrderStatusHistory',
+        'PasswordResetToken',
+        'Payment',
+        'PickupSlot',
+        'Promotion',
+        'PromotionClick',
+        'PromotionImpression',
+        'StaffAssignment',
+        'User',
+        'UserPreference',
+      ];
+      const tablesWithUpdatedAt = [
+        'Canteen',
+        'Category',
+        'InventoryRecord',
+        'MenuItem',
+        'Order',
+        'Payment',
+        'PickupSlot',
+        'Promotion',
+        'User',
+        'UserPreference',
+      ];
+
+      if (!('createdAt' in data) && tablesWithCreatedAt.includes(tableName)) {
+        data.createdAt = now;
+      }
+      if (!('updatedAt' in data) && tablesWithUpdatedAt.includes(tableName)) {
+        data.updatedAt = now;
       }
 
       // Handle nested creates if any
