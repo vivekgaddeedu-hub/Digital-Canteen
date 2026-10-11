@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const assignedCanteenId = user.staffAssignments[0]?.canteenId || null;
+    const assignedCanteenId = user.staffAssignments?.[0]?.canteenId || null;
 
     const token = signToken({
       userId: user.id,
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         name: user.name,
         email: user.email,
         role: user.role,
-        assignedCanteen: user.staffAssignments[0]?.canteen || null,
+        assignedCanteen: user.staffAssignments?.[0]?.canteen || null,
       },
     });
 
@@ -73,8 +73,9 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (error) {
     console.error('Login error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error during login.';
     return NextResponse.json(
-      { error: 'Internal server error during login.' },
+      { error: message },
       { status: 500 }
     );
   }
