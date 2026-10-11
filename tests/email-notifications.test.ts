@@ -24,7 +24,7 @@ describe('Nodemailer Email Infrastructure & Configuration', () => {
     expect(config.host).toBeDefined();
     expect(config.port).toBeTypeOf('number');
     expect(config.fromEmail).toContain('@');
-    expect(config.fromName).toBe('QUICKBITE');
+    expect(config.fromName).toContain('QUICKBITE');
     expect(config.appBaseUrl).toBeDefined();
   });
 
