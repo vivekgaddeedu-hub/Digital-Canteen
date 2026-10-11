@@ -85,11 +85,12 @@ interface TrackingData {
 }
 
 const LIFECYCLE_STEPS = [
-  { key: 'PLACED', label: 'Order Placed', desc: 'Order submitted to canteen' },
-  { key: 'ACCEPTED', label: 'Order Received & Accepted', desc: 'Staff acknowledged ticket' },
-  { key: 'PREPARING', label: 'Preparing', desc: 'Freshly cooking your food' },
-  { key: 'READY', label: 'Ready for Pickup', desc: 'Waiting at pickup counter' },
-  { key: 'COLLECTED', label: 'Collected', desc: 'Handover complete' },
+  { key: 'PLACED', label: 'ORDER PLACED', desc: 'Order submitted to kitchen' },
+  { key: 'RECEIVED', label: 'ORDER RECEIVED', desc: 'Canteen acknowledged ticket' },
+  { key: 'ACCEPTED', label: 'ORDER ACCEPTED', desc: 'Kitchen accepted order' },
+  { key: 'PREPARING', label: 'PREPARING', desc: 'Cooking meal in kitchen' },
+  { key: 'READY', label: 'READY FOR PICKUP', desc: 'Hot & ready at counter' },
+  { key: 'COLLECTED', label: 'COLLECTED', desc: 'Handover complete' },
 ];
 
 export default function TrackOrderClient({ orderId }: { orderId: string }) {
@@ -192,19 +193,23 @@ export default function TrackOrderClient({ orderId }: { orderId: string }) {
   const isCollected = order.status === 'COLLECTED';
   const isPaid = order.payment?.status === 'PAID' || order.payment?.status === 'COMPLETED';
 
-  // Compute active step index for linear progression
+  // Compute active step index for linear progression (6 stages)
   const getStepIndex = (status: string) => {
     switch (status) {
-      case 'PLACED':
-        return 0;
-      case 'ACCEPTED':
-        return 1;
-      case 'PREPARING':
-        return 2;
-      case 'READY':
-        return 3;
       case 'COLLECTED':
+        return 5;
+      case 'READY':
         return 4;
+      case 'PREPARING':
+        return 3;
+      case 'ACCEPTED':
+        return 2;
+      case 'PLACED': {
+        const hasAcknowledged = order?.statusHistory?.some((h) =>
+          h.note?.toLowerCase().includes('acknowledged')
+        );
+        return hasAcknowledged ? 1 : 0;
+      }
       default:
         return 0;
     }
@@ -241,10 +246,20 @@ export default function TrackOrderClient({ orderId }: { orderId: string }) {
               {order.status.replace('_', ' ')}
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Placed on {new Date(order.createdAt).toLocaleDateString()} at{' '}
-            {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mt-2">
+            <span>
+              Placed on {new Date(order.createdAt).toLocaleDateString()} at{' '}
+              {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <span>&bull;</span>
+            <span className="font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+              UUID: {order.id}
+            </span>
+            <span>&bull;</span>
+            <span className="font-mono font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
+              Pickup ID: {order.pickupToken}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -342,7 +357,7 @@ export default function TrackOrderClient({ orderId }: { orderId: string }) {
               }}
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
               {LIFECYCLE_STEPS.map((step, idx) => {
                 const isPassed = idx < currentStepIdx;
                 const isCurrent = idx === currentStepIdx;
@@ -350,7 +365,7 @@ export default function TrackOrderClient({ orderId }: { orderId: string }) {
                 return (
                   <div
                     key={step.key}
-                    className={`flex sm:flex-col items-center sm:text-center gap-3 sm:gap-2 ${
+                    className={`flex flex-col items-center text-center gap-1.5 ${
                       isCurrent
                         ? 'opacity-100 font-semibold text-brand-700'
                         : isPassed
@@ -370,8 +385,8 @@ export default function TrackOrderClient({ orderId }: { orderId: string }) {
                       {isPassed ? <CheckCheck className="w-4 h-4" /> : idx + 1}
                     </div>
                     <div>
-                      <p className="text-xs">{step.label}</p>
-                      <p className="text-[11px] font-normal text-slate-400 hidden sm:block">{step.desc}</p>
+                      <p className="text-[11px] sm:text-xs font-bold tracking-tight">{step.label}</p>
+                      <p className="text-[10px] font-normal text-slate-400 hidden sm:block">{step.desc}</p>
                     </div>
                   </div>
                 );
@@ -393,11 +408,19 @@ export default function TrackOrderClient({ orderId }: { orderId: string }) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 rounded-xl p-4 mb-4">
               <div>
-                <p className="text-xs text-slate-500 font-medium">Pickup Token Code</p>
+                <p className="text-xs text-slate-500 font-medium">Pickup Token / ID</p>
                 <p className="text-xl font-mono font-extrabold text-brand-700 mt-0.5 tracking-wider">
                   {order.pickupToken}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-0.5">Show this to staff at counter</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-500 font-medium">Order UUID</p>
+                <p className="text-xs font-mono font-bold text-slate-700 mt-1 break-all bg-white px-2 py-1 rounded border border-slate-200">
+                  {order.id}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Secure system identifier</p>
               </div>
 
               <div>

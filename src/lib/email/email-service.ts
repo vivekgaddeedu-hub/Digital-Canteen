@@ -3,13 +3,6 @@ import prisma from '@/lib/prisma';
 import {
   renderWelcomeEmail,
   renderPasswordResetEmail,
-  renderOrderPlacedEmail,
-  renderOrderReceivedEmail,
-  renderOrderAcceptedEmail,
-  renderOrderReadyForPickupEmail,
-  renderOrderCancelledEmail,
-  renderOrderStatusEmail,
-  OrderEmailData,
 } from './templates';
 
 export interface SendMailResult {
@@ -19,13 +12,13 @@ export interface SendMailResult {
   deduplicated?: boolean;
 }
 
-interface SendEmailOptions {
+export interface SendEmailOptions {
   orderId?: string;
   templateType?: string;
 }
 
 /**
- * Sends a generic transactional email safely.
+ * Sends a transactional email safely.
  * Checks for rapid duplicate sends and logs delivery attempts to NotificationLog.
  * Will not throw or crash caller processes if SMTP is unreachable or fails.
  */
@@ -147,118 +140,21 @@ export async function sendPasswordResetEmail(
   return sendEmailSafe(to, subject, text, html, { templateType: 'PASSWORD_RESET' });
 }
 
-export async function sendOrderPlacedEmail(
-  to: string,
-  orderData: Omit<OrderEmailData, 'appBaseUrl'>
-): Promise<SendMailResult> {
-  const config = getEmailConfig();
-  const fullData: OrderEmailData = {
-    ...orderData,
-    appBaseUrl: config.appBaseUrl,
-  };
-  const { subject, text, html } = renderOrderPlacedEmail(fullData);
-  return sendEmailSafe(to, subject, text, html, {
-    orderId: fullData.orderId,
-    templateType: 'ORDER_PLACED',
-  });
-}
+// Re-export order email senders from dedicated module
+export {
+  sendOrderPlacedEmail,
+  sendOrderReceivedEmail,
+  sendOrderAcceptedEmail,
+  sendOrderReadyEmail,
+  sendOrderCancelledEmail,
+  sendOrderStatusEmail,
+} from './send-order-email';
 
-export async function sendOrderReceivedEmail(
-  to: string,
-  orderData: Omit<OrderEmailData, 'appBaseUrl'>
-): Promise<SendMailResult> {
-  const config = getEmailConfig();
-  const fullData: OrderEmailData = {
-    ...orderData,
-    appBaseUrl: config.appBaseUrl,
-  };
-  const { subject, text, html } = renderOrderReceivedEmail(fullData);
-  return sendEmailSafe(to, subject, text, html, {
-    orderId: fullData.orderId,
-    templateType: 'ORDER_RECEIVED',
-  });
-}
-
-export async function sendOrderAcceptedEmail(
-  to: string,
-  orderData: Omit<OrderEmailData, 'appBaseUrl'>
-): Promise<SendMailResult> {
-  const config = getEmailConfig();
-  const fullData: OrderEmailData = {
-    ...orderData,
-    appBaseUrl: config.appBaseUrl,
-  };
-  const { subject, text, html } = renderOrderAcceptedEmail(fullData);
-  return sendEmailSafe(to, subject, text, html, {
-    orderId: fullData.orderId,
-    templateType: 'ORDER_ACCEPTED',
-  });
-}
-
-export async function sendOrderReadyEmail(
-  to: string,
-  orderData: Partial<OrderEmailData> & { orderNumber: string }
-): Promise<SendMailResult> {
-  const config = getEmailConfig();
-  const fullData: OrderEmailData = {
-    orderId: orderData.orderNumber,
-    customerName: 'Customer',
-    canteenName: 'QuickBite Canteen',
-    canteenLocation: 'Counter 1',
-    pickupSlot: 'Ready Now',
-    pickupToken: '',
-    items: [],
-    subtotal: 0,
-    tax: 0,
-    convenienceFee: 0,
-    total: 0,
-    status: 'READY',
-    paymentStatus: 'PAID',
-    appBaseUrl: config.appBaseUrl,
-    ...orderData,
-  };
-  const { subject, text, html } = renderOrderReadyForPickupEmail(fullData);
-  return sendEmailSafe(to, subject, text, html, {
-    orderId: fullData.orderId,
-    templateType: 'ORDER_READY',
-  });
-}
-
-export async function sendOrderCancelledEmail(
-  to: string,
-  orderData: Omit<OrderEmailData, 'appBaseUrl'>
-): Promise<SendMailResult> {
-  const config = getEmailConfig();
-  const fullData: OrderEmailData = {
-    ...orderData,
-    appBaseUrl: config.appBaseUrl,
-  };
-  const { subject, text, html } = renderOrderCancelledEmail(fullData);
-  return sendEmailSafe(to, subject, text, html, {
-    orderId: fullData.orderId,
-    templateType: 'ORDER_CANCELLED',
-  });
-}
-
-// Backward compatibility helper
+// Backward compatibility alias
 export async function sendOrderConfirmationEmail(
   to: string,
   orderData: any
 ): Promise<SendMailResult> {
+  const { sendOrderPlacedEmail } = await import('./send-order-email');
   return sendOrderPlacedEmail(to, orderData);
-}
-
-export async function sendOrderStatusEmail(
-  to: string,
-  data: any
-): Promise<SendMailResult> {
-  const config = getEmailConfig();
-  const { subject, text, html } = renderOrderStatusEmail({
-    ...data,
-    appBaseUrl: config.appBaseUrl,
-  });
-  return sendEmailSafe(to, subject, text, html, {
-    orderId: data.orderId || data.orderNumber,
-    templateType: `ORDER_STATUS_${data.status}`,
-  });
 }

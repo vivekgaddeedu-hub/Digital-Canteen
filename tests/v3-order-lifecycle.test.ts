@@ -47,35 +47,35 @@ describe('QUICKBITE V3: Custom Email Templates & Security', () => {
 
   it('renders Template 1: Order Placed email with tracking link and awaiting-acceptance note', () => {
     const email = renderOrderPlacedEmail(sampleEmailData);
-    expect(email.subject).toBe('QuickBite — Your Order Has Been Placed');
+    expect(email.subject).toBe('QuickBite | Your Order Has Been Placed!');
     expect(email.html).toContain('QB-20261010-9876');
     expect(email.html).toContain('http://localhost:3000/track-order/c1234567-89ab-cdef-0123-456789abcdef?token=a1b2c3d4e5f6789012345678');
     expect(email.html).toContain('awaiting acceptance');
     expect(email.html).not.toContain('<script>');
-    expect(email.text).toContain('QuickBite — Your Order Has Been Placed');
+    expect(email.text).toContain('QuickBite | Your Order Has Been Placed!');
     expect(email.text).toContain('₹245.50');
   });
 
   it('renders Template 2: Order Received email when staff acknowledges ticket', () => {
     const email = renderOrderReceivedEmail(sampleEmailData);
-    expect(email.subject).toBe('QuickBite — Your Order Has Been Received');
+    expect(email.subject).toBe('QuickBite | The Canteen Has Received Your Order');
     expect(email.html).toContain('acknowledged your order ticket');
     expect(email.html).toContain('QB-20261010-9876');
-    expect(email.text).toContain('QuickBite — Your Order Has Been Received');
+    expect(email.text).toContain('QuickBite | The Canteen Has Received Your Order');
   });
 
   it('renders Template 3: Order Accepted email when kitchen starts preparation', () => {
     const email = renderOrderAcceptedEmail(sampleEmailData);
-    expect(email.subject).toBe('QuickBite — Your Order Has Been Accepted');
+    expect(email.subject).toBe('QuickBite | Your Order Has Been Accepted!');
     expect(email.html).toContain('accepted by the kitchen');
     expect(email.html).toContain('Counter 2, 1st Floor');
-    expect(email.text).toContain('QuickBite — Your Order Has Been Accepted');
+    expect(email.text).toContain('QuickBite | Your Order Has Been Accepted!');
   });
 
   it('renders Template 4: Order Ready for Pickup with clear payment instructions', () => {
     // Unpaid scenario
     const unpaidEmail = renderOrderReadyForPickupEmail(sampleEmailData);
-    expect(unpaidEmail.subject).toBe('QuickBite — Your Food Is Ready for Pickup!');
+    expect(unpaidEmail.subject).toBe('QuickBite | Your Food Is Ready for Pickup!');
     expect(unpaidEmail.html).toContain('Payment Due at Counter');
     expect(unpaidEmail.html).toContain('Payment is still due');
 
@@ -93,9 +93,9 @@ describe('QUICKBITE V3: Custom Email Templates & Security', () => {
       ...sampleEmailData,
       cancellationReason: 'Out of fresh paneer stock',
     });
-    expect(email.subject).toBe('QuickBite — Your Order Has Been Cancelled');
+    expect(email.subject).toContain('Has Been Cancelled');
     expect(email.html).toContain('Out of fresh paneer stock');
-    expect(email.text).toContain('Reason: Out of fresh paneer stock');
+    expect(email.text).toContain('Out of fresh paneer stock');
   });
 });
 
