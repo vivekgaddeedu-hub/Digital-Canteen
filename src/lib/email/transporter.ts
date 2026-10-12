@@ -21,7 +21,10 @@ export function getEmailConfig(): EmailConfig {
   const pass = process.env.SMTP_PASS || '';
   const fromEmail = process.env.SMTP_FROM_EMAIL || user || 'orders@quickbite.campus.edu';
   const fromName = process.env.SMTP_FROM_NAME || 'QUICKBITE';
-  const appBaseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
+  const appBaseUrl =
+    (process.env.APP_BASE_URL && !process.env.APP_BASE_URL.includes('localhost'))
+      ? process.env.APP_BASE_URL
+      : (process.env.RENDER_EXTERNAL_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.APP_BASE_URL || 'http://localhost:3000');
 
   const config: EmailConfig = {
     host,

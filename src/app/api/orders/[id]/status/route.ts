@@ -161,24 +161,26 @@ export async function PUT(
     };
 
     // Send email notifications to customer asynchronously
-    if (toStatus === OrderStatus.ACCEPTED) {
-      sendOrderAcceptedEmail(order.customer.email, emailPayload).catch((err) =>
-        console.warn('Order accepted email error (non-fatal):', err)
-      );
-    } else if (toStatus === OrderStatus.READY) {
-      sendOrderReadyEmail(order.customer.email, emailPayload).catch((err) =>
-        console.warn('Order ready email error (non-fatal):', err)
-      );
-    } else if (toStatus === OrderStatus.CANCELLED || toStatus === OrderStatus.REJECTED) {
-      sendOrderCancelledEmail(order.customer.email, emailPayload).catch((err) =>
-        console.warn('Order cancelled email error (non-fatal):', err)
-      );
-    } else if (toStatus === OrderStatus.PREPARING) {
-      sendOrderStatusEmail(order.customer.email, {
-        ...emailPayload,
-        statusMessage: 'The chefs are now actively preparing your meal in the kitchen.',
-        reason: note,
-      }).catch((err) => console.warn('Order preparing email error (non-fatal):', err));
+    if (order.customer?.email) {
+      if (toStatus === OrderStatus.ACCEPTED) {
+        sendOrderAcceptedEmail(order.customer.email, emailPayload).catch((err) =>
+          console.warn('Order accepted email error (non-fatal):', err)
+        );
+      } else if (toStatus === OrderStatus.READY) {
+        sendOrderReadyEmail(order.customer.email, emailPayload).catch((err) =>
+          console.warn('Order ready email error (non-fatal):', err)
+        );
+      } else if (toStatus === OrderStatus.CANCELLED || toStatus === OrderStatus.REJECTED) {
+        sendOrderCancelledEmail(order.customer.email, emailPayload).catch((err) =>
+          console.warn('Order cancelled email error (non-fatal):', err)
+        );
+      } else if (toStatus === OrderStatus.PREPARING) {
+        sendOrderStatusEmail(order.customer.email, {
+          ...emailPayload,
+          statusMessage: 'The chefs are now actively preparing your meal in the kitchen.',
+          reason: note,
+        }).catch((err) => console.warn('Order preparing email error (non-fatal):', err));
+      }
     }
 
     return NextResponse.json({

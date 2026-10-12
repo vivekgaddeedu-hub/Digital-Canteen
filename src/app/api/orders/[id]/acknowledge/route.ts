@@ -65,14 +65,15 @@ export async function POST(
     });
 
     // Send "Order Received" email to customer
-    sendOrderReceivedEmail(order.customer.email, {
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      customerName: order.customer.name,
-      canteenName: order.canteen.name,
-      canteenLocation: order.canteen.location,
-      pickupSlot: order.pickupSlot ? `${order.pickupSlot.startTime} - ${order.pickupSlot.endTime}` : 'As Scheduled',
-      pickupToken: order.pickupToken,
+    if (order.customer?.email) {
+      sendOrderReceivedEmail(order.customer.email, {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        customerName: order.customer.name || 'Customer',
+        canteenName: order.canteen?.name || 'QuickBite Canteen',
+        canteenLocation: order.canteen?.location || 'Campus Counter',
+        pickupSlot: order.pickupSlot ? `${order.pickupSlot.startTime} - ${order.pickupSlot.endTime}` : 'As Scheduled',
+        pickupToken: order.pickupToken,
       items: order.items.map((i) => ({
         name: i.nameSnapshot,
         quantity: i.quantity,
@@ -85,9 +86,10 @@ export async function POST(
       total: Number(order.total),
       status: order.status,
       paymentStatus: order.payment?.status || 'UNPAID',
-    }).catch((err) => {
-      console.warn('Order received email failed (non-fatal):', err);
-    });
+      }).catch((err) => {
+        console.warn('Order received email failed (non-fatal):', err);
+      });
+    }
 
     return NextResponse.json({
       message: 'Order ticket receipt acknowledged by kitchen staff.',
