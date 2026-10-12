@@ -74,18 +74,18 @@ export async function POST(
         canteenLocation: order.canteen?.location || 'Campus Counter',
         pickupSlot: order.pickupSlot ? `${order.pickupSlot.startTime} - ${order.pickupSlot.endTime}` : 'As Scheduled',
         pickupToken: order.pickupToken,
-      items: order.items.map((i) => ({
-        name: i.nameSnapshot,
-        quantity: i.quantity,
-        price: Number(i.unitPriceSnapshot),
-        subtotal: Number(i.subtotal),
-      })),
-      subtotal: Number(order.subtotal),
-      tax: Number(order.tax),
-      convenienceFee: Number(order.convenienceFee),
-      total: Number(order.total),
-      status: order.status,
-      paymentStatus: order.payment?.status || 'UNPAID',
+        items: order.items.map((i) => ({
+          name: i.nameSnapshot,
+          quantity: i.quantity,
+          price: Number(i.unitPriceSnapshot),
+          subtotal: Number(i.subtotal),
+        })),
+        subtotal: Number(order.subtotal),
+        tax: Number(order.tax),
+        convenienceFee: Number(order.convenienceFee),
+        total: Number(order.total),
+        status: order.status,
+        paymentStatus: order.payment?.status || 'UNPAID',
       }).catch((err) => {
         console.warn('Order received email failed (non-fatal):', err);
       });
