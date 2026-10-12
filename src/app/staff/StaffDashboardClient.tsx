@@ -283,7 +283,7 @@ export default function StaffDashboardClient({ canteen, initialOrders }: StaffDa
       const q = searchQuery.toLowerCase();
       const matchNum = o.orderNumber.toLowerCase().includes(q);
       const matchToken = o.pickupToken.toLowerCase().includes(q);
-      const matchCust = o.customer.name.toLowerCase().includes(q);
+      const matchCust = o.customer?.name ? o.customer.name.toLowerCase().includes(q) : false;
       if (!matchNum && !matchToken && !matchCust) return false;
     }
 
@@ -481,7 +481,7 @@ export default function StaffDashboardClient({ canteen, initialOrders }: StaffDa
                 <div className="flex items-center gap-3 text-xs text-stone-500">
                   <span className="flex items-center gap-1 font-semibold text-stone-700">
                     <Clock className="w-3.5 h-3.5 text-brand-600" />
-                    Pickup Window: {order.pickupSlot.startTime} – {order.pickupSlot.endTime}
+                    Pickup Window: {order.pickupSlot ? `${order.pickupSlot.startTime} – ${order.pickupSlot.endTime}` : 'As Scheduled'}
                   </span>
                   <span>•</span>
                   <span>{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -492,8 +492,8 @@ export default function StaffDashboardClient({ canteen, initialOrders }: StaffDa
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div className="md:col-span-8 space-y-2">
                   <div className="text-xs">
-                    <span className="font-bold text-stone-900">{order.customer.name}</span>
-                    {order.customer.phone && (
+                    <span className="font-bold text-stone-900">{order.customer?.name || 'Customer'}</span>
+                    {order.customer?.phone && (
                       <span className="text-stone-400 ml-2">({order.customer.phone})</span>
                     )}
                   </div>
@@ -811,7 +811,7 @@ export default function StaffDashboardClient({ canteen, initialOrders }: StaffDa
               <div className="flex justify-between items-center">
                 <span className="text-stone-500 font-medium">Customer:</span>
                 <span className="font-bold text-stone-800">
-                  {selectedPickupOrder.customer.name}
+                  {selectedPickupOrder.customer?.name || 'Customer'}
                 </span>
               </div>
               <div className="flex justify-between items-center">

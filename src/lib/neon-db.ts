@@ -465,6 +465,22 @@ async function attachRelations(tableName: string, rows: any[], include?: Record<
     await Promise.all(tasks);
   }
 
+  if (tableName === 'PickupSlot') {
+    const canteenIds = Array.from(new Set(rows.map((r) => r.canteenId).filter(Boolean)));
+    const tasks: Promise<void>[] = [];
+
+    if (include.canteen && canteenIds.length > 0) {
+      tasks.push(
+        sql('SELECT * FROM "Canteen" WHERE "id" = ANY($1)', [canteenIds]).then((canteens) => {
+          const cMap = new Map(canteens.map((c) => [c.id, parseRow(c, 'Canteen')]));
+          rows.forEach((r) => (r.canteen = cMap.get(r.canteenId) || { name: 'QuickBite Canteen' }));
+        })
+      );
+    }
+
+    await Promise.all(tasks);
+  }
+
   return rows;
 }
 

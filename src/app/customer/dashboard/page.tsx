@@ -215,7 +215,7 @@ export default function CustomerDashboardPage() {
 
                 <div className="text-xs text-stone-600 border-t border-stone-100 pt-3 flex items-center justify-between">
                   <span>
-                    Slot: <strong>{ord.pickupSlot.startTime} - {ord.pickupSlot.endTime}</strong>
+                    Slot: <strong>{ord.pickupSlot ? `${ord.pickupSlot.startTime} - ${ord.pickupSlot.endTime}` : 'Flexible'}</strong>
                   </span>
                   <Link
                     href={`/orders/${ord.orderNumber}`}

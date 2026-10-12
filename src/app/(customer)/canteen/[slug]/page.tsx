@@ -55,8 +55,8 @@ export default async function CanteenMenuPage({
     })),
     pickupSlots: (canteen.pickupSlots || []).map((slot: any) => ({
       ...slot,
-      remainingCapacity: Math.max(0, slot.maxCapacity - slot.currentBookings),
-      isFull: slot.currentBookings >= slot.maxCapacity,
+      remainingCapacity: Math.max(0, (slot.maxCapacity || 0) - (slot.currentBookings || 0)),
+      isFull: (slot.currentBookings || 0) >= (slot.maxCapacity || 1),
     })),
   };
 

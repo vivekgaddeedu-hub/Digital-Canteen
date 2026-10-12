@@ -105,7 +105,7 @@ export default async function CustomerOrdersPage() {
                   <div className="flex items-center gap-3 text-xs text-stone-400">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-brand-600" />
-                      Pickup: {order.pickupSlot.startTime} – {order.pickupSlot.endTime} ({order.pickupSlot.date})
+                      Pickup: {order.pickupSlot ? `${order.pickupSlot.startTime} – ${order.pickupSlot.endTime} (${order.pickupSlot.date})` : 'Standard Pickup'}
                     </span>
                   </div>
                 </div>

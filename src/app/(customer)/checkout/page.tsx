@@ -25,8 +25,10 @@ interface PickupSlot {
   id: string;
   startTime: string;
   endTime: string;
-  remainingCapacity: number;
-  isFull: boolean;
+  remainingCapacity?: number;
+  isFull?: boolean;
+  maxCapacity?: number;
+  currentBookings?: number;
 }
 
 export default function CheckoutPage() {
@@ -204,16 +206,20 @@ export default function CheckoutPage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {slots.map((slot) => {
+                {(slots || []).map((slot) => {
+                  if (!slot || !slot.id) return null;
                   const isSelected = selectedSlotId === slot.id;
+                  const isFull = slot.isFull ?? ((slot.currentBookings || 0) >= (slot.maxCapacity || 1));
+                  const remainingCapacity = slot.remainingCapacity ?? Math.max(0, (slot.maxCapacity || 0) - (slot.currentBookings || 0));
+
                   return (
                     <button
                       key={slot.id}
                       type="button"
-                      disabled={slot.isFull}
+                      disabled={isFull}
                       onClick={() => setSelectedSlotId(slot.id)}
                       className={`p-3 rounded-2xl border text-left transition-all ${
-                        slot.isFull
+                        isFull
                           ? 'bg-stone-100 border-stone-200 opacity-50 cursor-not-allowed'
                           : isSelected
                           ? 'bg-brand-50 border-brand-500 ring-2 ring-brand-500/20'
@@ -221,18 +227,18 @@ export default function CheckoutPage() {
                       }`}
                     >
                       <span className="block text-xs font-bold text-stone-900">
-                        {slot.startTime} – {slot.endTime}
+                        {slot.startTime || '--:--'} – {slot.endTime || '--:--'}
                       </span>
                       <span
                         className={`block text-[11px] font-medium mt-1 ${
-                          slot.isFull
+                          isFull
                             ? 'text-rose-600 font-bold'
                             : isSelected
                             ? 'text-brand-700 font-bold'
                             : 'text-stone-500'
                         }`}
                       >
-                        {slot.isFull ? 'Slot Full' : `${slot.remainingCapacity} slots left`}
+                        {isFull ? 'Slot Full' : `${remainingCapacity} slots left`}
                       </span>
                     </button>
                   );

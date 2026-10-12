@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Canteen ID is required' }, { status: 400 });
     }
 
-    const slots = await prisma.pickupSlot.findMany({
+    let slots = await prisma.pickupSlot.findMany({
       where: {
         canteenId,
         date,
@@ -22,6 +22,57 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { startTime: 'asc' },
     });
+
+    if (slots.length === 0) {
+      const canteen = await prisma.canteen.findUnique({
+        where: { id: canteenId },
+        select: { id: true, isActive: true },
+      });
+
+      if (canteen && canteen.isActive) {
+        const DEFAULT_SCHEDULE = [
+          { startTime: '11:30', endTime: '11:45', maxCapacity: 15 },
+          { startTime: '11:45', endTime: '12:00', maxCapacity: 15 },
+          { startTime: '12:00', endTime: '12:15', maxCapacity: 20 },
+          { startTime: '12:15', endTime: '12:30', maxCapacity: 20 },
+          { startTime: '12:30', endTime: '12:45', maxCapacity: 20 },
+          { startTime: '12:45', endTime: '13:00', maxCapacity: 20 },
+          { startTime: '13:00', endTime: '13:15', maxCapacity: 20 },
+          { startTime: '13:15', endTime: '13:30', maxCapacity: 20 },
+          { startTime: '13:30', endTime: '13:45', maxCapacity: 15 },
+          { startTime: '13:45', endTime: '14:00', maxCapacity: 15 },
+          { startTime: '18:00', endTime: '18:30', maxCapacity: 20 },
+          { startTime: '18:30', endTime: '19:00', maxCapacity: 20 },
+        ];
+
+        for (const item of DEFAULT_SCHEDULE) {
+          try {
+            await prisma.pickupSlot.create({
+              data: {
+                canteenId,
+                date,
+                startTime: item.startTime,
+                endTime: item.endTime,
+                maxCapacity: item.maxCapacity,
+                currentBookings: 0,
+                isActive: true,
+              },
+            });
+          } catch {
+            // Ignore race condition insert collisions
+          }
+        }
+
+        slots = await prisma.pickupSlot.findMany({
+          where: {
+            canteenId,
+            date,
+            isActive: true,
+          },
+          orderBy: { startTime: 'asc' },
+        });
+      }
+    }
 
     const enriched = slots.map((slot) => ({
       ...slot,

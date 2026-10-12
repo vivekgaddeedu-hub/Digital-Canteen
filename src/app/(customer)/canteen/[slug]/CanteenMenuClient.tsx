@@ -27,8 +27,10 @@ interface PickupSlot {
   id: string;
   startTime: string;
   endTime: string;
-  remainingCapacity: number;
-  isFull: boolean;
+  remainingCapacity?: number;
+  isFull?: boolean;
+  maxCapacity?: number;
+  currentBookings?: number;
 }
 
 interface CanteenData {
@@ -141,25 +143,37 @@ export default function CanteenMenuClient({ canteen }: { canteen: CanteenData })
       <div className="bg-white rounded-2xl border border-stone-200/90 p-4 shadow-xs">
         <div className="flex items-center gap-2 text-xs font-bold text-stone-700 uppercase tracking-wider mb-2.5">
           <CalendarDays className="w-4 h-4 text-brand-600" />
-          <span>Today's Pickup Windows ({canteen.pickupSlots.length} Slots Available)</span>
+          <span>Today's Pickup Windows ({(canteen.pickupSlots || []).length} Slots Available)</span>
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-          {canteen.pickupSlots.map((slot) => (
-            <div
-              key={slot.id}
-              className={`shrink-0 px-3 py-1.5 rounded-xl border text-xs font-medium transition ${
-                slot.isFull
-                  ? 'bg-stone-100 border-stone-200 text-stone-400 line-through'
-                  : 'bg-stone-50 border-stone-200 text-stone-800 hover:border-brand-300'
-              }`}
-            >
-              <span className="font-bold">{slot.startTime} – {slot.endTime}</span>
-              <span className="ml-1.5 text-[10px] text-stone-500 font-mono">
-                {slot.isFull ? '(Full)' : `(${slot.remainingCapacity} left)`}
-              </span>
-            </div>
-          ))}
-        </div>
+        {(canteen.pickupSlots || []).length === 0 ? (
+          <p className="text-xs text-stone-400 py-1">
+            No pre-booking pickup windows active today. Walk-in counter ordering is available.
+          </p>
+        ) : (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+            {(canteen.pickupSlots || []).map((slot) => {
+              if (!slot || !slot.id) return null;
+              const isFull = slot.isFull ?? ((slot.currentBookings || 0) >= (slot.maxCapacity || 1));
+              const remaining = slot.remainingCapacity ?? Math.max(0, (slot.maxCapacity || 0) - (slot.currentBookings || 0));
+
+              return (
+                <div
+                  key={slot.id}
+                  className={`shrink-0 px-3 py-1.5 rounded-xl border text-xs font-medium transition ${
+                    isFull
+                      ? 'bg-stone-100 border-stone-200 text-stone-400 line-through'
+                      : 'bg-stone-50 border-stone-200 text-stone-800 hover:border-brand-300'
+                  }`}
+                >
+                  <span className="font-bold">{slot.startTime || '--:--'} – {slot.endTime || '--:--'}</span>
+                  <span className="ml-1.5 text-[10px] text-stone-500 font-mono">
+                    {isFull ? '(Full)' : `(${remaining} left)`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Search & Filters Controls */}

@@ -226,9 +226,9 @@ export async function POST(req: NextRequest) {
       orderId: orderResult.id,
       orderNumber: orderResult.orderNumber,
       customerName: auth.user.name,
-      canteenName: orderResult.canteen.name,
-      canteenLocation: orderResult.canteen.location,
-      pickupSlot: `${orderResult.pickupSlot.startTime} - ${orderResult.pickupSlot.endTime}`,
+      canteenName: orderResult.canteen?.name || 'QuickBite Canteen',
+      canteenLocation: orderResult.canteen?.location || 'Campus Counter',
+      pickupSlot: orderResult.pickupSlot ? `${orderResult.pickupSlot.startTime} - ${orderResult.pickupSlot.endTime}` : 'As Scheduled',
       pickupToken: orderResult.pickupToken,
       items: orderResult.items.map((i) => ({
         name: i.nameSnapshot,

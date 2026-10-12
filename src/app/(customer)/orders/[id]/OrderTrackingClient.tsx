@@ -269,9 +269,9 @@ export default function OrderTrackingClient({ initialOrder }: { initialOrder: Or
             </div>
             <div>
               <p className="font-bold text-stone-900">
-                Scheduled Pickup Window: {order.pickupSlot.startTime} – {order.pickupSlot.endTime}
+                Scheduled Pickup Window: {order.pickupSlot?.startTime || '--'} – {order.pickupSlot?.endTime || '--'}
               </p>
-              <p className="text-stone-500 text-[11px]">Date: {order.pickupSlot.date}</p>
+              <p className="text-stone-500 text-[11px]">Date: {order.pickupSlot?.date || 'Today'}</p>
             </div>
           </div>
 

@@ -101,18 +101,18 @@ export default function AdminSlotsClient({
             </thead>
             <tbody className="divide-y divide-stone-100">
               {slots.map((s) => {
-                const remaining = Math.max(0, s.maxCapacity - s.currentBookings);
-                const isFull = s.currentBookings >= s.maxCapacity;
+                const remaining = Math.max(0, (s.maxCapacity || 0) - (s.currentBookings || 0));
+                const isFull = (s.currentBookings || 0) >= (s.maxCapacity || 1);
 
                 return (
                   <tr key={s.id} className="hover:bg-stone-50 transition">
-                    <td className="py-3.5 px-4 font-bold text-stone-900">{s.canteen.name}</td>
+                    <td className="py-3.5 px-4 font-bold text-stone-900">{s.canteen?.name || 'QuickBite Canteen'}</td>
                     <td className="py-3.5 px-4 font-mono text-stone-600">{s.date}</td>
                     <td className="py-3.5 px-4 font-bold text-stone-800">
                       {s.startTime} – {s.endTime}
                     </td>
                     <td className="py-3.5 px-4 font-mono font-semibold">
-                      {s.currentBookings} / {s.maxCapacity}
+                      {s.currentBookings || 0} / {s.maxCapacity || 0}
                     </td>
                     <td className="py-3.5 px-4">
                       {isFull ? (

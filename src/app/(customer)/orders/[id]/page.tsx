@@ -53,14 +53,20 @@ export default async function OrderDetailsPage({
     cancellationReason: order.cancellationReason,
     createdAt: order.createdAt.toISOString(),
     canteen: {
-      name: order.canteen.name,
-      location: order.canteen.location,
+      name: order.canteen?.name || 'QuickBite Canteen',
+      location: order.canteen?.location || 'Campus Counter',
     },
-    pickupSlot: {
-      startTime: order.pickupSlot.startTime,
-      endTime: order.pickupSlot.endTime,
-      date: order.pickupSlot.date,
-    },
+    pickupSlot: order.pickupSlot
+      ? {
+          startTime: order.pickupSlot.startTime,
+          endTime: order.pickupSlot.endTime,
+          date: order.pickupSlot.date,
+        }
+      : {
+          startTime: '12:00',
+          endTime: '12:15',
+          date: 'Today',
+        },
     payment: order.payment
       ? {
           method: order.payment.method,

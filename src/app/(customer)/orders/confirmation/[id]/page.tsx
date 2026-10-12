@@ -68,9 +68,9 @@ export default async function OrderConfirmationPage({
               <span>Arrival Slot</span>
             </div>
             <p className="text-xs font-extrabold text-stone-900">
-              {order.pickupSlot.startTime} – {order.pickupSlot.endTime}
+              {order.pickupSlot ? `${order.pickupSlot.startTime} – ${order.pickupSlot.endTime}` : 'As Scheduled'}
             </p>
-            <p className="text-[10px] text-stone-500">{order.pickupSlot.date}</p>
+            <p className="text-[10px] text-stone-500">{order.pickupSlot?.date || 'Today'}</p>
           </div>
 
           <div className="bg-stone-50 p-3.5 rounded-xl border border-stone-200 space-y-1">
@@ -78,8 +78,8 @@ export default async function OrderConfirmationPage({
               <MapPin className="w-4 h-4 text-brand-600" />
               <span>Pickup Counter</span>
             </div>
-            <p className="text-xs font-extrabold text-stone-900 truncate">{order.canteen.name}</p>
-            <p className="text-[10px] text-stone-500 truncate">{order.canteen.location}</p>
+            <p className="text-xs font-extrabold text-stone-900 truncate">{order.canteen?.name || 'QuickBite Canteen'}</p>
+            <p className="text-[10px] text-stone-500 truncate">{order.canteen?.location || 'Counter'}</p>
           </div>
         </div>
 
